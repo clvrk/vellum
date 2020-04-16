@@ -1,0 +1,32 @@
+os: linux
+dist: xenial
+language: csharp
+dotnet: 3.1.201
+mono: none
+env:
+  global:
+    - RUNTIME=linux-x64
+  jobs:
+    - IS_SELF_CONTAINED=false
+    - IS_SELF_CONTAINED=true
+before_install:
+  - REPO_NAME=$(echo ${TRAVIS_BUILD_DIR} | sed -r 's/^.+\///g')
+  - TAG_CLEAN=$(if [ $(echo ${TRAVIS_TAG}) != "" ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
+  - ARTIFACT_BUNDLED=$(if [ $(echo ${IS_SELF_CONTAINED}) == "true" ]; then echo "-bundled"; else echo ""; fi)
+  - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_BUNDLED}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
+  - ASSEMBLY_VERSION=$(echo ${TAG_CLEAN} | sed -r "s/^.+\./&${TRAVIS_BUILD_NUMBER}./g")
+script:
+  - echo ${ASSEMBLY_VERSION}
+  - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} --self-contained ${IS_SELF_CONTAINED} /p:PublishTrimmed=${IS_SELF_CONTAINED} /p:PublishSingleFile=true /property:Version=${ASSEMBLY_VERSION}
+before_deploy:
+  - cd ~/build/${TRAVIS_REPO_SLUG}/bin/Release/netcoreapp3.1/${RUNTIME}/publish
+  - zip ${ARTIFACT_NAME}.zip ./*
+deploy:
+  provider: releases
+  token:
+    secure: bkpf8FnXooiKvbjgm/5kFV6y+5Apgi6sQm1iIdOfRTF4dkAdJG/p0fATFoR1V8HINIF9gN2bV7HefQz3UbgspbawPE/DK+HcHj1gHSjZ7QiabTSX4PgM5KfV0q54abIyot5kfyf+fj5RRrEsARFeDVpIi+B/VnyKJKb+5X9uTG8CzS1w4Afacjfh4gGFAW1aBAue/Oii96u42SZGk/gDX62kYUoiG1RXcx8acYSJOG241RfqiXN3zxZorhxItBLlAJUdC9n2FXPVw9awi/Joc643SE8TdBcqcggLKBieX8NVIk1YPIipanPZsubGafje78cqiMVquAxpq3BBamJEzKy4UPbW9SzI9/pkQtDuoaG6RvbtEjobKVKsKLeaP/uXE3fVorTeIpdNKmqkbag9yG0gOMu6JHkfEZCOHDBQXYSo22bevzO9dcWP8VmYwreaiUfYoZB3i+VEvZHH1k3ymEr4ckKchrg+/Enkj1SwzdDNdgl6PWsVt6Di+I8IMSMQ/Zqh3p6IhFWaX6WwIMbGcK2wkN1eqGg/aGfXCHoTatBi55zRYfvY3NlMzkuHX7Gn1Bf7Su6GR4NfBD7PbweQDI6dXO5bqfst9Dvq2a57SaDeRBzKtrPHWZ50ri3ppImucIUZmus4dCJlJSr2f1FVublzF2lI7EJI3u5eb8f7KH4=
+  file: ${ARTIFACT_NAME}.zip
+  skip_cleanup: true
+  on:
+    repo: clarkx86/papyrus-automation
+    tags: true

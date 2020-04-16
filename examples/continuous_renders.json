@@ -1,0 +1,23 @@
+{
+    "PapyrusOutputPath": "/home/server/papyruscs_output",
+    "PapyrusBinPath": "/home/server/papyruscs/PapyrusCs",
+    "PapyrusGlobalArgs": "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html -f webp -q -1 --deleteexistingupdatefolder",
+    "PapyrusTasks": [
+        "--dim 0",
+        "--dim 1",
+        "--dim 2"
+    ],
+    "BdsPath": "/home/server/bedrock-server",
+    "WorldName": "Bedrock level",
+    "ArchivePath": "./backups",
+    "BackupsToKeep": 10,
+    "RenderInterval": 0.5,
+    "BackupInterval": 60,
+    "PreExec": "echo Starting!",
+    "PostExec": "echo Success!",
+    "BackupOnStartup": true,
+    "EnableBackups": true,
+    "EnableRenders": true,
+    "QuietMode": true,
+    "HideStdout": true
+}
