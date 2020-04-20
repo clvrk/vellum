@@ -5,17 +5,18 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using Newtonsoft.Json;
+using papyrus.Automation;
 
-namespace papyrus_automation
+namespace papyrus
 {
     class Program
     {
-        private const String _configFname = "configuration.json";
-        private const String _tempPath = "temp/";
+        private const string _configFname = "configuration.json";
+        private const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
         private static BackupManager _backupManager;
         private static RenderManager _renderManager;
-        public delegate void InputStreamHandler(String text);
+        public delegate void InputStreamHandler(string text);
         static InputStreamHandler inStream;
         private static Thread _ioThread;
 
@@ -47,19 +48,19 @@ namespace papyrus_automation
                     bds.StartInfo.EnvironmentVariables.Add("LD_LIBRARY_PATH", RunConfig.BdsPath);
                 }
 
-                inStream = (String text) =>
+                inStream = (string text) =>
                 {
                     if (!_backupManager.Processing && !_renderManager.Processing)
                     {
                         if (text.ToLower() == "quit") {
-                            processManager.SendInput("stop\n");
+                            processManager.SendInput("stop");
                             bds.WaitForExit();
                             // _ioThread.Abort(); // Not supported on linux?
                         } else {
-                            processManager.SendInput(text + "\n");
+                            processManager.SendInput(text);
                         }
                     } else {
-                        System.Console.WriteLine("Could not execute \"{0}\". Please wait until all tasks have finished.", text);
+                        Console.WriteLine("Could not execute \"{0}\". Please wait until all tasks have finished.", text);
                     }
                 };
 
@@ -74,10 +75,10 @@ namespace papyrus_automation
                 _ioThread.Start();
                 #endregion
 
-                String worldPath = Path.Join(RunConfig.BdsPath, "worlds", RunConfig.WorldName);
-                String tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
+                string worldPath = Path.Join(RunConfig.BdsPath, "worlds", RunConfig.WorldName);
+                string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
 
-                _backupManager = new BackupManager(processManager);
+                _backupManager = new BackupManager(processManager, RunConfig);
 
                 if (RunConfig.BackupOnStartup)
                 {
@@ -116,7 +117,7 @@ namespace papyrus_automation
                     // Render interval
                     if (RunConfig.EnableRenders)
                     {
-                        _renderManager = new RenderManager(processManager);
+                        _renderManager = new RenderManager(processManager, RunConfig);
 
                         System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.RenderInterval * 60000);
                         renderIntervalTimer.AutoReset = true;
@@ -147,7 +148,7 @@ namespace papyrus_automation
                         WorldName = "Bedrock level",
                         PapyrusBinPath = "",
                         PapyrusGlobalArgs = "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html -f webp -q -1 --deleteexistingupdatefolder",
-                        PapyrusTasks = new String[] {
+                        PapyrusTasks = new string[] {
                              "--dim 0",
                              "--dim 1",
                              "--dim 2"

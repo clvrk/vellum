@@ -1,11 +1,18 @@
 using System;
 
-namespace papyrus_automation
+namespace papyrus.Automation
 {
     public abstract class Manager
     {
-        protected static String _tag = "[        PAPYRUS         ] ";
-        protected static String _indent = "\t-> ";
+        protected static string _tag = "[        PAPYRUS         ] ";
+        protected static string _indent = "\t-> ";
         public bool Processing { get; protected set; } = false;
+
+        protected static void Log(string text)
+        {
+            #if !IS_LIB
+            Console.WriteLine(text);
+            #endif
+        }
     }
 }

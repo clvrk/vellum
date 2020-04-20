@@ -2,15 +2,15 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace papyrus_automation
+namespace papyrus.Automation
 {
     public class ProcessManager
     {
         private Process _process;
-        private String _lastMessage = "";
+        private string _lastMessage = "";
         private Regex _pattern = null;
         public bool HasMatched { get; private set; } = false;
-        private String _matchedText;
+        private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
 
         public ProcessManager(Process p)
@@ -19,9 +19,9 @@ namespace papyrus_automation
             p.OutputDataReceived += OutputTextReceived;
         }
 
-        public void SendInput(String text)
+        public void SendInput(string text)
         {
-            _process.StandardInput.Write(text);
+            _process.StandardInput.Write(text + "\n");
         }
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
@@ -64,15 +64,15 @@ namespace papyrus_automation
             _pattern = regex;
         }
 
-        public String GetMatchedText()
+        public string GetMatchedText()
         {
             return _matchedText;
         }
 
-        public static void RunCustomCommand(String cmd)
+        public static void RunCustomCommand(string cmd)
         {
-            String shell = "";
-            String args = "";
+            string shell = "";
+            string args = "";
             switch ((int)System.Environment.OSVersion.Platform)
             {
                 case 0:
@@ -96,11 +96,13 @@ namespace papyrus_automation
             p.WaitForExit();
         }
 
-        public void SendTellraw(String message)
+        public void SendTellraw(string message)
         {
             if (!Program.RunConfig.QuietMode)
             {
+                #if !IS_LIB
                 SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[PAPYRUS]\"},{\"text\":\"§r " + message + "\"}]}\n");
+                #endif
             }                
         }
     }

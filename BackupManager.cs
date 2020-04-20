@@ -4,76 +4,99 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace papyrus_automation
+namespace papyrus.Automation
 {
+
     public class BackupManager : Manager
     {
         private ProcessManager _bds;
+        public RunConfiguration RunConfig;
+        ///<summary>Time in milliseconds to wait until sending next <code>save query</code> command to <code>ProcessManager</code>'s process</summary>
+        public int QueryTimeout { get; set; } = 500;
 
-        public BackupManager(ProcessManager p)
+        public BackupManager(ProcessManager p, RunConfiguration runConfig)
         {
             _bds = p;
+            RunConfig = runConfig;
         }
 
-        public void CreateWorldBackup(String worldPath, String tempPath, bool fullCopy, bool archive)
+        ///<summary>
+        ///Creates a copy of a world and attempts to archive it as a compressed .zip-archive in the <code>archivePath</code> directory.
+        ///</summary>
+        ///<param name="worldPath">Path to the world to copy.</param>
+        ///<param name="destinationPath">Path to copy the world to.</param>
+        ///<param name="fullCopy">Whether to copy the whole world directory instead of just the updated files. The server must not be running for a full copy.</param>
+        ///<param name="archive">Whether to archive the backup as a compressed .zip-file.</param>
+        public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
         {
             // if (!Processing)
             // {
                 Processing = true;
                 if (fullCopy)
                 {
-                    if (Directory.Exists(tempPath))
+                    if (Directory.Exists(destinationPath))
                     {
-                        Console.Write("{0}Clearing local world backup directory...\t", _indent);
+                        Log(String.Format("{0}Clearing local world backup directory...\t", _indent));
 
-                        Directory.Delete(tempPath, true);
-                        Directory.CreateDirectory(tempPath);
-
-                        Console.WriteLine("Done!");
+                        Directory.Delete(destinationPath, true);
+                        Directory.CreateDirectory(destinationPath);
                     }
                     else
                     {
-                        Directory.CreateDirectory(tempPath);
+                        Directory.CreateDirectory(destinationPath);
                     }
 
                     
                     if (Directory.Exists(worldPath))
                     {
-                        Console.Write("{0}Attempting to create full world backup...\t", _indent);
+                        Log(String.Format("{0}Attempting to create full world backup...\t", _indent));
 
-                        CopyDirectory(worldPath, tempPath);
+                        CopyDirectory(worldPath, destinationPath);
 
-                        Console.WriteLine("Done!");
+                        // Archive
+                        if (archive)
+                        {
+                            Log(String.Format("{0}Archiving world backup...", _indent));
+                            if (Archive(destinationPath, RunConfig.ArchivePath, RunConfig.BackupsToKeep))
+                            {
+                                Log(String.Format("{0}Archiving done!", _indent));
+                            } else {
+                                Log(String.Format("{0}Archiving failed!", _indent));
+                            }
+                        }
                     }
                     else
                     {
-                        Console.WriteLine("{0}Invalid world directory. Could not create full world backup!", _indent);
+                        Log(String.Format("{0}Invalid world directory. Could not create full world backup!", _indent));
                     }
                 }
                 else
                 {
                     #region PRE EXEC
-                    if (!String.IsNullOrWhiteSpace(Program.RunConfig.PreExec))
+                    if (!string.IsNullOrWhiteSpace(RunConfig.PreExec))
                     {
-                        Console.WriteLine("{0}Executing pre-command...", _tag);
-                        ProcessManager.RunCustomCommand(Program.RunConfig.PreExec);
+                        Log(String.Format("{0}Executing pre-command...", _tag));
+                        ProcessManager.RunCustomCommand(RunConfig.PreExec);
                     }
                     #endregion
 
-                    Console.WriteLine("{0}Creating backup...", _tag);
-                    Console.WriteLine("{0}{1}Holding world saving...", _tag, _indent);
+                    Log(String.Format("{0}Creating backup...", _tag));
+                    Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
 
                     // Send tellraw message 1/2
                     _bds.SendTellraw("Creating backup...");
                     
+                    #if !IS_LIB
                     _bds.EnableConsoleOutput = false;
-                    _bds.SendInput("save hold\n");
+                    #endif
+                    
+                    _bds.SendInput("save hold");
                     _bds.SetMatchPattern(new Regex("^(" + Path.GetFileName(worldPath) + @"[\/]{1})"));
 
                     while (!_bds.HasMatched)
                     {
-                        _bds.SendInput("save query\n");
-                        Thread.Sleep(500);
+                        _bds.SendInput("save query");
+                        Thread.Sleep(QueryTimeout);
                     }
 
                     _bds.EnableConsoleOutput = true;
@@ -81,7 +104,7 @@ namespace papyrus_automation
                     Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");
                     MatchCollection matches = fileListRegex.Matches(_bds.GetMatchedText());
 
-                    String[,] sourceFiles = new String[matches.Count, 2];
+                    string[,] sourceFiles = new string[matches.Count, 2];
 
                     for (int i = 0; i < matches.Count; i++)
                     {
@@ -91,14 +114,14 @@ namespace papyrus_automation
                         //Console.WriteLine(sourceFiles[i,1]);
                     }
 
-                    Console.WriteLine("{0}{1}Copying {2} files... ", _tag, _indent, sourceFiles.GetLength(0));
+                    Log(String.Format("{0}{1}Copying {2} files... ", _tag, _indent, sourceFiles.GetLength(0)));
                     // ACTUAL COPYING BEGINS HERE
                     for (uint i = 0; i < sourceFiles.GetLength(0); i++)
                     {
                         // The last 3 files always seem to be the world metadata which need to be copied into the worlds root directory instead of the "db"-subdirectory
-                        String subDir = (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
-                        String filePath = Path.Join(worldPath + subDir, Path.GetFileName(sourceFiles[i, 0]));
-                        String targetPath = tempPath + subDir + sourceFiles[i, 0];
+                        string subDir = (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
+                        string filePath = Path.Join(worldPath + subDir, Path.GetFileName(sourceFiles[i, 0]));
+                        string targetPath = destinationPath + subDir + sourceFiles[i, 0];
 
                         // System.Console.WriteLine("\"{0}\" -> \"{1}\"", filePath, targetPath);
 
@@ -117,15 +140,15 @@ namespace papyrus_automation
 
                     #region FILE INTEGRITY CHECK
 
-                    Console.WriteLine("{0}{1}Veryfing file-integrity... ", _tag, _indent);
+                    Log(String.Format("{0}{1}Veryfing file-integrity... ", _tag, _indent));
 
-                    String[] sourceDbFiles = Directory.GetFiles(worldPath + "/db/");
-                    String[] targetDbFiles = Directory.GetFiles(tempPath + "/db/");
+                    string[] sourceDbFiles = Directory.GetFiles(worldPath + "/db/");
+                    string[] targetDbFiles = Directory.GetFiles(destinationPath + "/db/");
 
-                    foreach (String tFile in targetDbFiles)
+                    foreach (string tFile in targetDbFiles)
                     {
                         bool found = false;
-                        foreach (String sFile in sourceDbFiles)
+                        foreach (string sFile in sourceDbFiles)
                         {
                             if (Path.GetFileName(tFile) == Path.GetFileName(sFile)) 
                             {
@@ -144,24 +167,24 @@ namespace papyrus_automation
 
                     #endregion
 
-                    Console.WriteLine("{0}{1}Resuming world saving...", _tag, _indent);
+                    Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
                     _bds.EnableConsoleOutput = false;
-                    _bds.SendInput("save resume\n");
+                    _bds.SendInput("save resume");
                     _bds.WaitForMatch(new Regex("^(Changes to the level are resumed.)"), 1);
                     _bds.EnableConsoleOutput = true;
 
-                    String tellrawMsg = "Finished creating backup!";
+                    string tellrawMsg = "Finished creating backup!";
 
                     // Archive
                     if (archive)
                     {
-                        Console.WriteLine("{0}{1}Archiving world backup...", _tag, _indent);
-                        if (ArchiveBackup(tempPath, Program.RunConfig.ArchivePath, Program.RunConfig.BackupsToKeep))
+                        Log(String.Format("{0}{1}Archiving world backup...", _tag, _indent));
+                        if (Archive(destinationPath, RunConfig.ArchivePath, RunConfig.BackupsToKeep))
                         {
-                            Console.WriteLine("{0}{1}Archiving done!", _tag, _indent);
+                            Log(String.Format("{0}{1}Archiving done!", _tag, _indent));
                         } else {
-                            Console.WriteLine("{0}{1}Archiving failed!", _tag, _indent);
+                            Log(String.Format("{0}{1}Archiving failed!", _tag, _indent));
                             tellrawMsg = "Could not archive backup!";
                         }
                     }
@@ -169,13 +192,13 @@ namespace papyrus_automation
                     // Send tellraw message 2/2
                     _bds.SendTellraw(tellrawMsg);
 
-                    Console.WriteLine("{0}Backup done!", _tag);
+                    Log(String.Format("{0}Backup done!", _tag));
                     
                     #region POST EXEC
-                    if (!String.IsNullOrWhiteSpace(Program.RunConfig.PostExec))
+                    if (!string.IsNullOrWhiteSpace(RunConfig.PostExec))
                     {
-                        Console.WriteLine("{0}Executing post-command...", _tag);
-                        ProcessManager.RunCustomCommand(Program.RunConfig.PostExec);
+                        Log(String.Format("{0}Executing post-command...", _tag));
+                        ProcessManager.RunCustomCommand(RunConfig.PostExec);
                     }
                     #endregion
                 }
@@ -184,38 +207,45 @@ namespace papyrus_automation
             // }
         }
 
-        public static bool ArchiveBackup(String sourcePath, String destinationPath, uint backupsToKeep)
+        ///<summary>Compresses a world as a .zip archive to the <code>destinationPath</code> directory and optionally deletes old backups.</summary>
+        ///<param name="sourcePath">World to archive</param>
+        ///<param name="destinationPath">Directory to save archive in (archives will be named like this: <code>yyyy-MM-dd_HH-mm_WORLDNAME.zip</code>)</param>
+        ///<param name="archivesToKeep">Threshold for archives to keep, archives that exceed this threshold will be deleted, <code>-1</code> to not remove any archives</param>
+        public static bool Archive(string sourcePath, string destinationPath, int archivesToKeep)
         {
             bool result = false;
 
             if (!Directory.Exists(destinationPath)) { Directory.CreateDirectory(destinationPath); }
 
-            String[] files = Directory.GetFiles(destinationPath);
-            DateTime[] creationTimes = new DateTime[files.Length];
-
-            for (int i = 0; i < files.Length; i++)
+            if (archivesToKeep != -1)
             {
-                creationTimes[i] = File.GetCreationTime(files[i]);
-            }
+                string[] files = Directory.GetFiles(destinationPath);
+                DateTime[] creationTimes = new DateTime[files.Length];
 
-            Array.Sort(files, creationTimes);
-
-            if (files.Length > Program.RunConfig.BackupsToKeep) 
-            {
-                for (uint i = 0; i < Math.Abs(Program.RunConfig.BackupsToKeep - files.Length); i++)
+                for (int i = 0; i < files.Length; i++)
                 {
-                    // System.Console.WriteLine("Deleting: {0}", files[i]);
-                    try
+                    creationTimes[i] = File.GetCreationTime(files[i]);
+                }
+
+                Array.Sort(files, creationTimes);
+
+                if (files.Length > archivesToKeep) 
+                {
+                    for (uint i = 0; i < Math.Abs(archivesToKeep - files.Length); i++)
                     {
-                        File.Delete(files[i]);
-                    } catch {
-                        System.Console.WriteLine("Could not delete {0}", files[i]);
+                        // System.Console.WriteLine("Deleting: {0}", files[i]);
+                        try
+                        {
+                            File.Delete(files[i]);
+                        } catch {
+                            Log(String.Format("Could not delete {0}", files[i]));
+                        }
                     }
                 }
             }
-
-            String archiveName = String.Format("{0}_{1}.{2}", DateTime.Now.ToString("yyyy-MM-dd_HH-mm"), Path.GetFileName(sourcePath), "zip");
-            String archivePath = Path.Join(destinationPath, archiveName);
+            
+            string archiveName = String.Format("{0}_{1}.{2}", DateTime.Now.ToString("yyyy-MM-dd_HH-mm"), Path.GetFileName(sourcePath), "zip");
+            string archivePath = Path.Join(destinationPath, archiveName);
 
             if (!File.Exists(archivePath))
             {
@@ -223,18 +253,21 @@ namespace papyrus_automation
                     ZipFile.CreateFromDirectory(sourcePath, archivePath, CompressionLevel.Optimal, false);
                     result = true;
                 } catch {
-                    Console.WriteLine("Could not create archive \"{0}\"!", archiveName);
+                    Log(String.Format("Could not create archive \"{0}\"!", archiveName));
                     result = false;
                 }
             } else {
-                Console.WriteLine("Could not create archive \"{0}\" because it already exists!", archiveName);
+                Log(String.Format("Could not create archive \"{0}\" because it already exists!", archiveName));
                 result = false;
             }
 
             return result;
         }
 
-        public static void CopyDirectory(String sourceDir, String targetDir)
+        ///<summary>Copies an existing directory.</summary>
+        ///<param name="sourceDir">Directory to copy</param>
+        ///<param name="targetDir">Directory to create and populate with files</param>
+        public static void CopyDirectory(string sourceDir, string targetDir)
         {
             // Create root directory
             if (!Directory.Exists(targetDir))
@@ -242,14 +275,14 @@ namespace papyrus_automation
                 Directory.CreateDirectory(targetDir);
             }
 
-            String[] sourceFiles = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
+            string[] sourceFiles = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
 
-            foreach (String sFile in sourceFiles)
+            foreach (string sFile in sourceFiles)
             {
-                String tFile = sFile.Replace(sourceDir, targetDir);
+                string tFile = sFile.Replace(sourceDir, targetDir);
 
                 // Create sub-directory if needed
-                String subDir = Path.GetDirectoryName(tFile);
+                string subDir = Path.GetDirectoryName(tFile);
                 if (!Directory.Exists(subDir))
                 {
                     Directory.CreateDirectory(subDir);
