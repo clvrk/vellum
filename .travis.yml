@@ -7,18 +7,18 @@ env:
   global:
     - RUNTIME=linux-x64
   jobs:
-    - OUTPUT_TYPE=Exe IS_SELF_CONTAINED=false
-    - OUTPUT_TYPE=Exe IS_SELF_CONTAINED=true
-    - OUTPUT_TYPE=Library IS_SELF_CONTAINED=false
+    - OUTPUT_TYPE=Exe SELF_CONTAINED=false
+    - OUTPUT_TYPE=Exe SELF_CONTAINED=true
+    - OUTPUT_TYPE=Library SELF_CONTAINED=false
 before_install:
   - REPO_NAME=$(echo ${TRAVIS_BUILD_DIR} | sed -r 's/^.+\///g')
   - TAG_CLEAN=$(if [ $(echo ${TRAVIS_TAG}) != "" ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
-  - ARTIFACT_SUFFIX=$(if [ $(echo ${IS_SELF_CONTAINED}) == "true" ]; then echo "-bundled"; elseif [ $(echo ${OUTPUT_TYPE}) == "Library" ]; then echo "-lib"; else echo ""; fi)
+  - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
   - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
   - ASSEMBLY_VERSION=$(echo ${TAG_CLEAN} | sed -r "s/^.+\./&${TRAVIS_BUILD_NUMBER}./g")
 script:
   - echo ${ASSEMBLY_VERSION}
-  - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /p:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${IS_SELF_CONTAINED} --self-contained ${IS_SELF_CONTAINED}
+  - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /p:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
 before_deploy:
   - cd ~/build/${TRAVIS_REPO_SLUG}/bin/Release/netcoreapp3.1/${RUNTIME}/publish
   - zip ${ARTIFACT_NAME}.zip ./*
