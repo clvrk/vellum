@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>$(OutputType)</OutputType>
     <DefineConstants Condition="'$(OutputType)' == 'Library'">IS_LIB</DefineConstants>
-    <PublishSingleFile Condition="'$(OutputType)' == 'Exe'">true</PublishSingleFile>
+    <PublishSingleFile Condition="'$(OutputType)' == 'Exe' And '$(Configuration)' == 'Release'">true</PublishSingleFile>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>papyrus</RootNamespace>
     <Configurations>Debug;Release;</Configurations>
+    <Authors>clarkx86</Authors>
+    <RepositoryUrl>https://github.com/clarkx86/papyrus-automation</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

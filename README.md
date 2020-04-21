@@ -1,18 +1,19 @@
 <html>
     <body>
         <div align="center">
-            <h1>papyrus.automation</h1>
-            <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?token=HbQVu7TQ88w44jXpWo3s&branch=master"></a>
+            <img alt="papyrus.automation" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/04/papyrus-automation_logo-3.png">
+            <br>
+            <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?branch=experimental"></a>
             <a href="https://discord.gg/J2sBaXa"><img alt="Discord" src="https://img.shields.io/discord/569841820092203011?label=chat&logo=discord&logoColor=white"></a>
             <br><br>
         </div>
     </body>
 </html>
 
-This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation** tool primarily made to create incremental backups and render interactive maps of your world using [**papyrus.cs**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
+This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation** tool primarily made to create incremental backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## How does it work?
-When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call papyrus.cs with user-individual arguments to render the world using the temporary world-backup directory.
+When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call PapyrusCS with user-individual arguments to render the world using the temporary world-backup directory.
 
 ## Get started
 ### Prerequisites
@@ -39,15 +40,15 @@ Once the server has launched through this tool you will be able to use the serve
 ### Incremental backups
 To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option to prevent eventually running out of disk space.
 
-### papyrus.cs integration
-This tool can automatically execute the **papyrus.cs** map-rendering tool on an interval. To do so you have to set `EnableRenders` to `true` and specify an interval in minutes with `RenderInterval`.
-You can add your own arguments that will be attached when papyrus.cs is called. When configuring you will find two keys, `PapyrusGlobalArgs` and an array called `PapyrusTasks`. The value in `PapyrusGlobalArgs` specifies arguments that will be attached for each papyrus.cs task when executed, while `PapyrusTasks` represent an array of individual processes (or tasks). Adding an entry to the array represents another task that will be executed after the previous one has finished, this way it is possible to make papyrus.cs render multiple dimensions or have different configurations in general. Again, the same `PapyrusGlobalArgs` will be present for each of these tasks individually.
+### PapyrusCS integration
+This tool can automatically execute the **PapyrusCS** map-rendering tool on an interval. To do so you have to set `EnableRenders` to `true` and specify an interval in minutes with `RenderInterval`.
+You can add your own arguments that will be attached when PapyrusCS is called. When configuring you will find two keys, `PapyrusGlobalArgs` and an array called `PapyrusTasks`. The value in `PapyrusGlobalArgs` specifies arguments that will be attached for each PapyrusCS task when executed, while `PapyrusTasks` represent an array of individual processes (or tasks). Adding an entry to the array represents another task that will be executed after the previous one has finished, this way it is possible to make PapyrusCS render multiple dimensions or have different configurations in general. Again, the same `PapyrusGlobalArgs` will be present for each of these tasks individually.
 
 When specifying additional arguments for `PapyrusGlobalArgs` please make sure to **append** to the pre-generated entry (do not edit the `-w` and `-o` parameters!).
 Please thoroughly verify that your paths and arguments are correct, you can find a configuration-example [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
 
 ### Getting the most latest renders continuously
-If you want to get the most latest renders of your world continuously, set the `Interval` option in the `configuration.json` to a small number (e.g. `0.5` for 30 seconds) and `QuietMode` to `true`. This tool will automatically check if a previous render has already finished and won't spawn another papyrus.cs rendering process if it has not. Please note that you probably need to have a good server to do so and even then, you'll most likely need to specify additional arguments in the `PapyrusGlobalArgs` option (e.g. `--threads 1`, `-f jpg -q 50`,  etc.)! You can find an example configuration for contiunous renders [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/continuous_renders.json).
+If you want to get the most latest renders of your world continuously, set the `Interval` option in the `configuration.json` to a small number (e.g. `0.5` for 30 seconds) and `QuietMode` to `true`. This tool will automatically check if a previous render has already finished and won't spawn another PapyrusCS rendering process if it has not. Please note that you probably need to have a good server to do so and even then, you'll most likely need to specify additional arguments in the `PapyrusGlobalArgs` option (e.g. `--threads 1`, `-f jpg -q 50`,  etc.)! You can find an example configuration for contiunous renders [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/continuous_renders.json).
 
 **Please note:** This tool will only run on Linux-based systems and currently won't work on Windows, [find out more here](https://bugs.mojang.com/browse/BDS-2733).
 
@@ -72,7 +73,7 @@ PapyrusGlobalArgs String              Global arguments that are present for each
 
 PapyrusTasks      String [Array]      An array of additional arguments for papyrus,
                                       where each array entry executes another
-                                      papyrus.cs process after the previous one has
+                                      PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
                                       dimensions)
 
@@ -84,15 +85,15 @@ ArchivePath       String              Path where world-backup archives should be
 BackupsToKeep     Integer             Amount of backups to keep in the "ArchivePath"-
                                       directory, old backups automatically get deleted
 
-BackupOnStartup   Boolean (!)         Wether to create a full backup of the specified
+BackupOnStartup   Boolean (!)         Whether to create a full backup of the specified
                                       world before starting the BDS process
                                       IMPORTANT: It is highly encouraged to leave
                                       this setting on "true"!
 
-EnableRenders     Boolean (!)         Wether to create an interactive map of the world
-                                      using papyrus.cs
+EnableRenders     Boolean (!)         Whether to create an interactive map of the world
+                                      using PapyrusCS
 
-EnableBackups     Boolean (!)         Wether to create world-backups as .zip-archives
+EnableBackups     Boolean (!)         Whether to create world-backups as .zip-archives
 
 RenderInterval    Double              Time in seconds to run a backup and render map
 
@@ -108,12 +109,19 @@ PostExec          String              An arbitrary command that gets executed af
 QuietMode         Boolean (!)         Suppress notifying players in-game that papyrus
                                       is creating a backup and render
 
-HideStdout        Boolean (!)         Wether to hide the console output generated by
-                                      the papyrus.cs rendering process, setting this
+HideStdout        Boolean (!)         Whether to hide the console output generated by
+                                      the PapyrusCS rendering process, setting this
                                       to "true" may help debug your configuration but
-                                      will result in a more verbose output 
+                                      will result in a more verbose output
 
-* values marked with (!) are required, not-required values should be provided depending on your specific configuration
+StopBeforeBackup  Boolean (!)         Whether to stop, take a backup and then restart
+                                      the server instead of taking a hot-backup
+
+TimeBeforeStop    Integer             Time in seconds before stopping the server for a
+                                      backup. Players on the server will be
+                                      notified with a chat message
+
+* values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
 You can find an example configuration [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
 

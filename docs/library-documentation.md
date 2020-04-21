@@ -1,15 +1,23 @@
 # Using papyrus.automation as a library
-papyrus.automation exposes some of it's functionality as a library.
+papyrus.automation exposes some of it's functionality as a library. The library is available as a NuGet package from [GitHub packages](https://github.com/clarkx86/papyrus-automation/packages).
 
 ## Table of contents
-1. [**Overview**]()
-   - [RunConfiguration]()
-   - [ProcessManager]()
-   - [BackupManager]()
-   - [RenderManager]()
-2. [**Examples**]()
+- [Using papyrus.automation as a library](#using-papyrusautomation-as-a-library)
+  - [Table of contents](#table-of-contents)
+  - [Classes & structs](#classes--structs)
+    - [**RunConfiguration**](#runconfiguration)
+    - [**ProcessManager**](#processmanager)
+      - [Constructors](#constructors)
+      - [Properties](#properties)
+      - [Methods](#methods)
+    - [**BackupManager**](#backupmanager)
+      - [Constructors](#constructors-1)
+      - [Methods](#methods-1)
+    - [**RenderManager**](#rendermanager)
+      - [Constructors](#constructors-2)
+      - [Methods](#methods-2)
+  - [Examples](#examples)
 
-# Overview
 ## Classes & structs
 ### **RunConfiguration**
 `namespace`: `papyrus`
@@ -23,7 +31,7 @@ A struct that represents a run configuration that defines certain paths, archivi
 Controls an underlying processes stdout/ stdin and provides methods to look out for specific patterns in the processes console output.
 #### Constructors
 ```csharp
-ProcessManager(Process p);
+ProcessManager(ProcessStartInfo startInfo);
 ```
 #### Properties
 ```csharp
@@ -35,7 +43,7 @@ bool HasMatched
 static void RunCustomCommand(string cmd)
 // Runs a custom command in the operating systems terminal
 
-void SendInput(string text)
+void SendInput(string cmd)
 // Sends a command the the underlying processes stdin and executes it
 
 void SetMatchPattern(Regex regex)
@@ -53,7 +61,7 @@ BackupManager(ProcessManager p, RunConfiguration runConfig);
 #### Methods
 ```csharp
 void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
-// Creates a backup of a world. If "fullCopy" is set to "true" it will copy the whole directory and not just the updated database files, therefor the server must not be running for a full copy. If archive is set to "true" it will compress the world as a .zip-archive, deleting red
+// Creates a backup of a world. If "fullCopy" is set to "true" it will copy the whole directory and not just the updated database files, therefor the server must not be running for a full copy. If archive is set to "true" it will compress the world as a .zip-archive, deleting redundant archives
 
 static bool Archive(string sourcePath, string destinationPath, int archivesToKeep)
 // Archives a world as a compressed .zip-archive, keeping "archivesToKeep"-amount of archives in the "destinationPath"-directory and deleting all older ones. However setting "archivesToKeep" to "-1" won't delete any archives at all. Archives are named like this: ""yyyy-MM-dd_HH-mm_WORLDNAME.zip"
@@ -75,3 +83,5 @@ RenderManager(ProcessManager p, RunConfiguration runConfig);
 void StartRender(string worldPath)
 // Calls papyrus.cs with the previously specified settings in the RunConfiguration on the world in the "worldPath"-directory
 ```
+
+## Examples
