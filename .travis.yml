@@ -6,6 +6,8 @@ mono: none
 env:
   global: 
     - REPO_NAME=$(echo ${TRAVIS_BUILD_DIR} | sed -r 's/^.+\///g')
+    - TAG_CLEAN=$(if [ $(echo ${TRAVIS_TAG}) != "" ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
+    - ASSEMBLY_VERSION=$(echo ${TAG_CLEAN} | sed -r "s/^.+\./&${TRAVIS_BUILD_NUMBER}./g")
   jobs:
     - RUNTIME=win-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=false
     - RUNTIME=linux-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=false
@@ -14,26 +16,24 @@ jobs:
   include:
     - if: tag IS present
       env:
-        secure: "QrNeuR+zCypZYVdECiIST4/vGPUCEmrPgu8BxuvX4ODYkPRai8YSAC1tEe075p2rcibnRcTL9Z2qz6C1zddGRtPM5YJZXU6u9beJB6Lr0rYOXCWeEEOmHSrAK6bH6gQDFMTnVMTErIJXImf+pJ9IkWDxetnR5W9Sc+rDvDWu0CNqizyypFXWtpNnYVgZ4jvwo67RSLAHxK9JmGUGpzzmqSxLAf5EwS1WXm5kjWLkmxsIGm6LfKvlWJkc/DWUGlxdZz56PXb6oOBhTHiHTTZ8POFN4y0o/znYB7JWFnv8No2xmi9nqep5RbT3tntgDTBJzbCCYMn8n/0X54P8r3wTNBaGfWTpsKcJbsMUEpHXw1+4U+J/fSKNTgvHwtryZqqrK9ZNaPm2c+eBBwXuHgyTTva5xcQ8YpXa08VfHXoi0ebEepLgPUl6Yc5UGH5+9NAHZimScszFF9TSn8Yw+UWo2NN4ihn2ISmmZpmXZpsr80cwZ27qPDrEmCnNl7v4AUaeq368y+QniKZBQJR9XPVblGnRDClXk5TNDryMEIXdAbHgMp2aMpg4UtavACqUlJCoMimTPpwCksmM/8X/wgv4gWHv9VmV4SRrxG9yg5qmkFazdoQDWcXUh8tgoV7Bw3oraIHFQvz5ihKjmh84hK7yDBdFGOAuH9YMi94VjV/8jpw="
+        - secure: "QrNeuR+zCypZYVdECiIST4/vGPUCEmrPgu8BxuvX4ODYkPRai8YSAC1tEe075p2rcibnRcTL9Z2qz6C1zddGRtPM5YJZXU6u9beJB6Lr0rYOXCWeEEOmHSrAK6bH6gQDFMTnVMTErIJXImf+pJ9IkWDxetnR5W9Sc+rDvDWu0CNqizyypFXWtpNnYVgZ4jvwo67RSLAHxK9JmGUGpzzmqSxLAf5EwS1WXm5kjWLkmxsIGm6LfKvlWJkc/DWUGlxdZz56PXb6oOBhTHiHTTZ8POFN4y0o/znYB7JWFnv8No2xmi9nqep5RbT3tntgDTBJzbCCYMn8n/0X54P8r3wTNBaGfWTpsKcJbsMUEpHXw1+4U+J/fSKNTgvHwtryZqqrK9ZNaPm2c+eBBwXuHgyTTva5xcQ8YpXa08VfHXoi0ebEepLgPUl6Yc5UGH5+9NAHZimScszFF9TSn8Yw+UWo2NN4ihn2ISmmZpmXZpsr80cwZ27qPDrEmCnNl7v4AUaeq368y+QniKZBQJR9XPVblGnRDClXk5TNDryMEIXdAbHgMp2aMpg4UtavACqUlJCoMimTPpwCksmM/8X/wgv4gWHv9VmV4SRrxG9yg5qmkFazdoQDWcXUh8tgoV7Bw3oraIHFQvz5ihKjmh84hK7yDBdFGOAuH9YMi94VjV/8jpw="
         - OUTPUT_TYPE=Library
+      before_install:
+        - ARTIFACT_NAME=${REPO_NAME}.${ASSEMBLY_VERSION}
       script:
         - nuget sources add -ConfigFile "nuget.conf" -Name "github" -Source "https://nuget.pkg.github.com/clarkx86/index.json" -Username "clarkx86" -Password "${GITHUB_TOKEN}" -StorePasswordInClearText
         - dotnet pack -c Release /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE}
       deploy:
         provider: script
-        script: dotnet nuget push "bin/Release/${REPO_NAME}.${ASSEMBLY_VERSION}.nupkg" --source "github"
+        script: dotnet nuget push "bin/Release/${ARTIFACT_NAME}.nupkg" --source "github"
         on:
           repo: clarkx86/papyrus-automation
           branch: master
           tags: true
 before_install:
-  global:
-    - TAG_CLEAN=$(if [ $(echo ${TRAVIS_TAG}) != "" ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
-    - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
-    - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
-    - ASSEMBLY_VERSION=$(echo ${TAG_CLEAN} | sed -r "s/^.+\./&${TRAVIS_BUILD_NUMBER}./g")
+  - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
+  - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
 script:
-  - echo ${ASSEMBLY_VERSION}
   - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
 before_deploy:
   - cd ~/build/${TRAVIS_REPO_SLUG}/bin/Release/netcoreapp3.1/${RUNTIME}/publish
