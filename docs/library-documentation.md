@@ -2,21 +2,12 @@
 papyrus.automation exposes some of it's functionality as a library. The library is available as a NuGet package from [GitHub packages](https://github.com/clarkx86/papyrus-automation/packages).
 
 ## Table of contents
-- [Using papyrus.automation as a library](#using-papyrusautomation-as-a-library)
-  - [Table of contents](#table-of-contents)
-  - [Classes & structs](#classes--structs)
-    - [**RunConfiguration**](#runconfiguration)
-    - [**ProcessManager**](#processmanager)
-      - [Constructors](#constructors)
-      - [Properties](#properties)
-      - [Methods](#methods)
-    - [**BackupManager**](#backupmanager)
-      - [Constructors](#constructors-1)
-      - [Methods](#methods-1)
-    - [**RenderManager**](#rendermanager)
-      - [Constructors](#constructors-2)
-      - [Methods](#methods-2)
-  - [Examples](#examples)
+1. [**Overview**](#classes--structs)
+   - [RunConfiguration](#runconfiguration)
+   - [ProcessManager](#processmanager)
+   - [BackupManager](#backupmanager)
+   - [RenderManager](#rendermanager)
+2. [**Examples**](#examples)
 
 ## Classes & structs
 ### **RunConfiguration**

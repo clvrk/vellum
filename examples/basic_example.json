@@ -19,5 +19,7 @@
     "EnableBackups": true,
     "EnableRenders": true,
     "QuietMode": false,
-    "HideStdout": true
+    "HideStdout": true,
+    "StopBeforeBackup": false,
+    "TimeBeforeShutdown": 0
 }
