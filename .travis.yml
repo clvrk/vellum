@@ -11,7 +11,7 @@ env:
     - OUTPUT_TYPE=Library
 jobs:
   include:
-    - if: env(OUTPUT_TYPE) != "Library"
+    - if: env(OUTPUT_TYPE) = "Exe"
       script:
         - echo ${ASSEMBLY_VERSION}
         - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
