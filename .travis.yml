@@ -34,6 +34,7 @@ before_install:
   - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
   - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
 script:
+  - echo ${ARTIFACT_NAME}
   - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
 before_deploy:
   - cd ~/build/${TRAVIS_REPO_SLUG}/bin/Release/netcoreapp3.1/${RUNTIME}/publish
