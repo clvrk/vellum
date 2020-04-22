@@ -1,14 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <DefineConstants Condition="'$(OutputType)' == 'Library'">IS_LIB</DefineConstants>
+    <PublishSingleFile Condition="'$(OutputType)' == 'Exe' And '$(Configuration)' == 'Release'">true</PublishSingleFile>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>papyrus_automation</RootNamespace>
+    <RootNamespace>papyrus</RootNamespace>
     <Configurations>Debug;Release;</Configurations>
+    <Authors>clarkx86</Authors>
+    <RepositoryUrl>https://github.com/clarkx86/papyrus-automation</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3">
+      <PrivateAssets Condition="'$(OutputType)' == 'Library'">all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

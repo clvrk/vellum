@@ -1,25 +1,27 @@
 ﻿using System;
 
-namespace papyrus_automation
+namespace papyrus
 {
     public struct RunConfiguration
     {
-        public String BdsPath;
-        public String WorldName;
-        public String PapyrusBinPath;
-        public String PapyrusGlobalArgs;
-        public String[] PapyrusTasks;
-        public String PapyrusOutputPath;
-        public String ArchivePath;
-        public uint BackupsToKeep;
+        public string BdsPath;
+        public string WorldName;
+        public string PapyrusBinPath;
+        public string PapyrusGlobalArgs;
+        public string[] PapyrusTasks;
+        public string PapyrusOutputPath;
+        public string ArchivePath;
+        public int BackupsToKeep;
         public bool BackupOnStartup;
         public bool EnableRenders;
         public bool EnableBackups;
         public double RenderInterval;
         public double BackupInterval;
-        public String PreExec;
-        public String PostExec;
+        public string PreExec;
+        public string PostExec;
         public bool QuietMode;
         public bool HideStdout;
+        public bool StopBeforeBackup;
+        public int TimeBeforeStop;
     }
 }
