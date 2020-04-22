@@ -6,7 +6,7 @@ mono: none
 env:
   global: 
     - REPO_NAME=$(echo ${TRAVIS_BUILD_DIR} | sed -r 's/^.+\///g')
-    - TAG_CLEAN=$(if [ $(echo ${TRAVIS_TAG}) != "" ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
+    - TAG_CLEAN=$(if [ -n $TRAVIS_TAG ]; then echo $(echo ${TRAVIS_TAG} | sed -r 's/^v//g'); else echo "1.0.0"; fi)
     - ASSEMBLY_VERSION=$(echo ${TAG_CLEAN} | sed -r "s/^.+\./&${TRAVIS_BUILD_NUMBER}./g")
   jobs:
     - RUNTIME=win-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=false
