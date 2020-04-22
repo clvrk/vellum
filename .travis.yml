@@ -11,7 +11,7 @@ env:
     - OUTPUT_TYPE=Library
 jobs:
   include:
-    - if: $OUTPUT_TYPE != Library
+    - if: env(OUTPUT_TYPE) != "Library"
       script:
         - echo ${ASSEMBLY_VERSION}
         - dotnet publish papyrus-automation.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
@@ -27,7 +27,7 @@ jobs:
         on:
           repo: clarkx86/papyrus-automation
           tags: true
-    - if: $OUTPUT_TYPE = Library AND tag IS present
+    - if: env(OUTPUT_TYPE) = "Library" AND tag IS present
       env:
         secure: "QrNeuR+zCypZYVdECiIST4/vGPUCEmrPgu8BxuvX4ODYkPRai8YSAC1tEe075p2rcibnRcTL9Z2qz6C1zddGRtPM5YJZXU6u9beJB6Lr0rYOXCWeEEOmHSrAK6bH6gQDFMTnVMTErIJXImf+pJ9IkWDxetnR5W9Sc+rDvDWu0CNqizyypFXWtpNnYVgZ4jvwo67RSLAHxK9JmGUGpzzmqSxLAf5EwS1WXm5kjWLkmxsIGm6LfKvlWJkc/DWUGlxdZz56PXb6oOBhTHiHTTZ8POFN4y0o/znYB7JWFnv8No2xmi9nqep5RbT3tntgDTBJzbCCYMn8n/0X54P8r3wTNBaGfWTpsKcJbsMUEpHXw1+4U+J/fSKNTgvHwtryZqqrK9ZNaPm2c+eBBwXuHgyTTva5xcQ8YpXa08VfHXoi0ebEepLgPUl6Yc5UGH5+9NAHZimScszFF9TSn8Yw+UWo2NN4ihn2ISmmZpmXZpsr80cwZ27qPDrEmCnNl7v4AUaeq368y+QniKZBQJR9XPVblGnRDClXk5TNDryMEIXdAbHgMp2aMpg4UtavACqUlJCoMimTPpwCksmM/8X/wgv4gWHv9VmV4SRrxG9yg5qmkFazdoQDWcXUh8tgoV7Bw3oraIHFQvz5ihKjmh84hK7yDBdFGOAuH9YMi94VjV/8jpw="
       script:
