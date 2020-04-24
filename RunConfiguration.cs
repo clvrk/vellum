@@ -21,6 +21,7 @@ namespace papyrus
         public string PostExec;
         public bool QuietMode;
         public bool HideStdout;
+        public bool BusyCommands;
         public bool StopBeforeBackup;
         public int TimeBeforeStop;
     }

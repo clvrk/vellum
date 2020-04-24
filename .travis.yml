@@ -21,15 +21,22 @@ jobs:
       before_install:
         - ARTIFACT_NAME=${REPO_NAME}.${ASSEMBLY_VERSION}
       script:
-        - nuget sources add -ConfigFile "nuget.conf" -Name "github" -Source "https://nuget.pkg.github.com/clarkx86/index.json" -Username "clarkx86" -Password "${GITHUB_TOKEN}" -StorePasswordInClearText
         - dotnet pack -c Release /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE}
+      before_deploy:
+        - echo '<?xml version="1.0" encoding="utf-8"?><configuration></configuration>' >> nuget.config
+        - dotnet nuget add source "https://nuget.pkg.github.com/clarkx86/index.json" --configfile "nuget.config" -n "github" -u "clarkx86" -p "${GITHUB_TOKEN}" --store-password-in-clear-text
       deploy:
         provider: script
-        script: dotnet nuget push "bin/Release/${ARTIFACT_NAME}.nupkg" --source "github"
+        skip_cleanup: true
+        script: dotnet nuget push "bin/Release/${ARTIFACT_NAME}.nupkg" -s "github"
         on:
           repo: clarkx86/papyrus-automation
           branch: master
           tags: true
+      after_script:
+        - rm -f nuget.config
+  allow_failures:
+    - env: OUTPUT_TYPE=Library
 before_install:
   - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
   - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}

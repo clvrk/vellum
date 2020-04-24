@@ -81,10 +81,6 @@ namespace papyrus.Automation
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
 
-                #if !IS_LIB
-                _bds.EnableConsoleOutput = false;
-                #endif
-
                 _bds.SendInput("save hold");
                 _bds.SetMatchPattern(new Regex("^(" + Path.GetFileName(worldPath) + @"[\/]{1})"));
 
@@ -93,8 +89,6 @@ namespace papyrus.Automation
                     _bds.SendInput("save query");
                     Thread.Sleep(QueryTimeout);
                 }
-
-                _bds.EnableConsoleOutput = true;
 
                 Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");
                 MatchCollection matches = fileListRegex.Matches(_bds.GetMatchedText());
@@ -164,10 +158,8 @@ namespace papyrus.Automation
 
                 Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
-                _bds.EnableConsoleOutput = false;
                 _bds.SendInput("save resume");
                 _bds.WaitForMatch(new Regex("^(Changes to the level are resumed.)"));
-                _bds.EnableConsoleOutput = true;
             }
 
             string tellrawMsg = "Finished creating backup!";

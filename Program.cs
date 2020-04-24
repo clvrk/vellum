@@ -19,6 +19,7 @@ namespace papyrus
         public delegate void InputStreamHandler(string text);
         static InputStreamHandler inStream;
         private static Thread _ioThread;
+        private static bool _readInput = true;
         public bool IsReady { get; private set; } = false;
 
         static void Main(string[] args)
@@ -32,9 +33,18 @@ namespace papyrus
                     RunConfig = JsonConvert.DeserializeObject<RunConfiguration>(reader.ReadToEnd());
                 }
 
+                // ONLY FOR 1.14, should be fixed in the next BDS build
+                if (!RunConfig.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
+                {
+                    Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configFname);
+                    System.Environment.Exit(0);
+                }
+
+
                 #region BDS process and input thread
                 // BDS
-                ProcessStartInfo serverStartInfo = new ProcessStartInfo() {
+                ProcessStartInfo serverStartInfo = new ProcessStartInfo()
+                {
                     FileName = Path.Join(RunConfig.BdsPath, System.Environment.OSVersion.Platform == PlatformID.Unix ? "bedrock_server" : "bedrock_server.exe"),
                     WorkingDirectory = RunConfig.BdsPath
                 };
@@ -45,34 +55,18 @@ namespace papyrus
                     serverStartInfo.EnvironmentVariables.Add("LD_LIBRARY_PATH", RunConfig.BdsPath);
                 }
 
-                ProcessManager bds = new ProcessManager(serverStartInfo);
-
-                // Input thread
-                inStream = (string text) =>
-                {
-                    if (!_backupManager.Processing && !_renderManager.Processing)
-                    {
-                        if (text.ToLower() == "quit")
-                        {
-                            bds.SendInput("stop");
-                            bds.Process.WaitForExit();
-                            // _ioThread.Abort(); // Not supported on linux?
-                        }
-                        else
-                        {
-                            bds.SendInput(text);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Could not execute \"{0}\". Please wait until all tasks have finished.", text);
-                    }
-                };
+                ProcessManager bds = new ProcessManager(serverStartInfo, new string[] {
+                    "^(" + RunConfig.WorldName.Trim() + @"\/\d+\.\w+\:\d+)",
+                    "^(Saving...)",
+                    "^(A previous save has not been completed.)",
+                    "^(Data saved. Files are now ready to be copied.)",
+                    "^(Changes to the level are resumed.)"
+                });
 
                 // Input thread
                 _ioThread = new Thread(new ThreadStart(() =>
                 {
-                    while (true)
+                    while (_readInput)
                     {
                         inStream?.Invoke(Console.ReadLine());
                     }
@@ -83,79 +77,128 @@ namespace papyrus
                 string worldPath = Path.Join(RunConfig.BdsPath, "worlds", RunConfig.WorldName);
                 string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
 
+                _renderManager = new RenderManager(bds, RunConfig);
                 _backupManager = new BackupManager(bds, RunConfig);
 
                 if (RunConfig.BackupOnStartup)
                 {
                     // Create initial world backup
                     Console.WriteLine("Creating initial world backup...");
-                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false);
+                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
                 }
 
-                // // Run server
-                // Console.WriteLine("Attempting to start server process...");
-                // if (bds.Start())
-                // {
-                //     bds.BeginOutputReadLine();
-                    
-                //     Console.WriteLine("Process started!\n");
-                    
                 // Start server in case the BackupManager hasn't started it yet
                 if (!bds.IsRunning) { bds.Start(); }
 
-                    // Wait until BDS successfully started
-                    bds.WaitForMatch(new Regex(@"^.+ (Server started\.)"));
+                // Wait until BDS successfully started
+                bds.WaitForMatch(new Regex(@"^.+ (Server started\.)"));
 
-                    // Backup interval
-                    if (RunConfig.EnableBackups)
+                // Backup interval
+                if (RunConfig.EnableBackups)
+                {
+                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.BackupInterval * 60000);
+                    backupIntervalTimer.AutoReset = true;
+                    backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                        System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.BackupInterval * 60000);
-                        backupIntervalTimer.AutoReset = true;
-                        backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
-                        {
-                            if (!_backupManager.Processing)
-                            {
-                                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true);
-                            }
-                            else
-                            {
-                                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A backup task is still running."); }
-                            }
+                        InvokeBackup(worldPath, tempWorldPath);
+                    };
+                    backupIntervalTimer.Start();
 
+                    if (RunConfig.StopBeforeBackup)
+                    {
+                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.BackupInterval * 60000) - (RunConfig.TimeBeforeStop * 1000));
+                        backupNotificationTimer.AutoReset = true;
+                        backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                        {
+                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.TimeBeforeStop));
                         };
-                        backupIntervalTimer.Start();
+                    }
+                }
 
-                        if (RunConfig.StopBeforeBackup)
+                // Render interval
+                if (RunConfig.EnableRenders)
+                {
+                    System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.RenderInterval * 60000);
+                    renderIntervalTimer.AutoReset = true;
+                    renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                    {
+                        InvokeRender(worldPath, tempWorldPath);
+                    };
+                    renderIntervalTimer.Start();
+                }
+
+                // Input thread
+                inStream = (string text) =>
+                {
+                    if (RunConfig.BusyCommands || (!_backupManager.Processing && !_renderManager.Processing))
+                    {
+                        #region CUSTOM COMMANDS
+                        MatchCollection cmd = Regex.Matches(text.ToLower().Trim(), @"(\S+)");
+
+                        if (cmd.Count > 0)
                         {
-                            System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.BackupInterval * 60000) - (RunConfig.TimeBeforeStop * 1000));
-                            backupNotificationTimer.AutoReset = true;
-                            backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
-                                bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.TimeBeforeStop));
-                            };
+                            bool result = false;
+                            switch (cmd[0].Groups[1].Value)
+                            {
+                                case "force":
+                                    if (cmd.Count >= 3)
+                                    {
+                                        switch (cmd[1].Groups[1].Value)
+                                        {
+                                            case "start":
+                                                switch (cmd[2].Groups[1].Value)
+                                                {
+                                                    case "backup":
+                                                        InvokeBackup(worldPath, tempWorldPath);
+                                                        result = true;
+                                                        break;
+
+                                                    case "render":
+                                                        InvokeRender(worldPath, tempWorldPath);
+                                                        result = true;
+                                                        break;
+                                                }
+                                                break;
+
+                                                /*
+                                                case "stop":
+                                                    switch (cmd[2].Groups[1].Value)
+                                                    {
+                                                        case "render":
+                                                            Console.WriteLine((_renderManager.Abort() ? "Render process stopped by user." : "Could not stop render process."));
+                                                            result = true;
+                                                        break;
+                                                    }
+                                                break;
+                                                */
+                                        }
+                                    }
+                                    break;
+
+                                case "stop":
+                                    result = true;
+                                    // _renderManager.Abort();
+                                    bds.SendInput("stop");
+                                    bds.Process.WaitForExit();
+                                    _readInput = false;
+                                    Console.WriteLine("papyrus quit correctly.");
+                                    break;
+
+                                default:
+                                    result = true;
+                                    bds.SendInput(text);
+                                    break;
+                            }
+
+                            if (!result) { Console.WriteLine("Could not execute papyrus command \"{0}\".", text); }
                         }
+                        #endregion
                     }
-
-                    // Render interval
-                    if (RunConfig.EnableRenders)
+                    else
                     {
-                        _renderManager = new RenderManager(bds, RunConfig);
-
-                        System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.RenderInterval * 60000);
-                        renderIntervalTimer.AutoReset = true;
-                        renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
-                        {
-                            if (!_backupManager.Processing && !_renderManager.Processing)
-                            {
-                                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false);
-                                _renderManager.StartRender(tempWorldPath);
-                            }
-                            else
-                            {
-                                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
-                            }
-                        };
-                        renderIntervalTimer.Start();
+                        Console.WriteLine("Could not execute papyrus command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configFname);
                     }
+                };
             }
             else
             {
@@ -186,12 +229,38 @@ namespace papyrus
                         PostExec = "",
                         QuietMode = false,
                         HideStdout = true,
-                        StopBeforeBackup = false,
+                        BusyCommands = true,
+                        StopBeforeBackup = (System.Environment.OSVersion.Platform != PlatformID.Win32NT ? false : true), // Should be reverted to "false" by default when 1.16 releases
                         TimeBeforeStop = 60
                     }, Formatting.Indented));
                 }
 
                 Console.WriteLine(String.Format("Done! Please edit the \"{0}\" file and restart this application.", _configFname));
+            }
+        }
+
+        private static void InvokeBackup(string worldPath, string tempWorldPath)
+        {
+            if (!_backupManager.Processing)
+            {
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true);
+            }
+            else
+            {
+                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A backup task is still running."); }
+            }
+        }
+
+        private static void InvokeRender(string worldPath, string tempWorldPath)
+        {
+            if (!_backupManager.Processing && !_renderManager.Processing)
+            {
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false);
+                _renderManager.Start(tempWorldPath);
+            }
+            else
+            {
+                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
             }
         }
     }

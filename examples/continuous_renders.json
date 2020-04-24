@@ -20,6 +20,7 @@
     "EnableRenders": true,
     "QuietMode": true,
     "HideStdout": true,
+    "BusyCommands": true,
     "StopBeforeBackup": false,
     "TimeBeforeShutdown": 0
 }

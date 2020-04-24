@@ -12,6 +12,19 @@
 
 This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation** tool primarily made to create incremental backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
+## Table of contents
+- [Table of contents](#table-of-contents)
+- [How does it work?](#how-does-it-work)
+- [Get started](#get-started)
+  - [Prerequisites](#prerequisites)
+  - [Installing and configuring](#installing-and-configuring)
+  - [Incremental backups](#incremental-backups)
+  - [PapyrusCS integration](#papyruscs-integration)
+  - [Getting the most latest renders continuously](#getting-the-most-latest-renders-continuously)
+- [Configuration overview](#configuration-overview)
+- [Commands](#commands)
+- [Disclaimer! Read before using!](#disclaimer-read-before-using)
+
 ## How does it work?
 When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call PapyrusCS with user-individual arguments to render the world using the temporary world-backup directory.
 
@@ -114,6 +127,9 @@ HideStdout        Boolean (!)         Whether to hide the console output generat
                                       to "true" may help debug your configuration but
                                       will result in a more verbose output
 
+BusyCommands      Boolean (!)         Allow executing BDS commands while the tool is
+                                      taking backups
+
 StopBeforeBackup  Boolean (!)         Whether to stop, take a backup and then restart
                                       the server instead of taking a hot-backup
 
@@ -124,6 +140,18 @@ TimeBeforeStop    Integer             Time in seconds before stopping the server
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
 You can find an example configuration [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
+
+## Commands
+papyrus.automation also provides a few commands that you can execute to force-invoke backup- or rendering tasks.
+```
+COMMAND                               ABOUT
+----------------------------------------------------------
+force start backup                    Forces taking a (hot-)backup (according to your
+                                      "StopBeforeBackup" setting)
+
+force start render                    Forces PapyrusCS to execute and render your
+                                      world
+```
 
 ## Disclaimer! Read before using!
 Use this tool at **your own risk**! When using this software you agree to not hold us liable for any corrupted save data or deleted files. Make sure to configure everything correctly and thoroughly!

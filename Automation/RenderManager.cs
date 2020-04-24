@@ -7,6 +7,7 @@ namespace papyrus.Automation
     public class RenderManager : Manager
     {
         private ProcessManager _bds;
+        private Process _renderer;
         public RunConfiguration RunConfig;
 
         public RenderManager(ProcessManager p, RunConfiguration runConfig)
@@ -15,7 +16,7 @@ namespace papyrus.Automation
             RunConfig = runConfig;
         }
 
-        public void StartRender(string worldPath)
+        public void Start(string worldPath)
         {
             Processing = true;
 
@@ -37,16 +38,17 @@ namespace papyrus.Automation
 
             for (int i = 0; i < RunConfig.PapyrusTasks.Length; i++)
             {
-                Process renderer = new Process();
+                _renderer = new Process();
                 string args = RunConfig.PapyrusGlobalArgs.Replace("${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy)).Replace("${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.PapyrusOutputPath)) + " " + RunConfig.PapyrusTasks[i];
-                renderer.StartInfo.FileName = RunConfig.PapyrusBinPath;
-                renderer.StartInfo.Arguments = args;
-                renderer.StartInfo.RedirectStandardOutput = RunConfig.HideStdout;
+                _renderer.StartInfo.FileName = RunConfig.PapyrusBinPath;
+                _renderer.StartInfo.Arguments = args;
+                _renderer.StartInfo.RedirectStandardOutput = RunConfig.HideStdout;
+                _renderer.StartInfo.RedirectStandardInput = true;
 
                 Log(String.Format("{0}{1}Rendering map {2}/{3}...", _tag, _indent, i + 1, RunConfig.PapyrusTasks.Length));
 
-                renderer.Start();
-                renderer.WaitForExit();
+                _renderer.Start();
+                _renderer.WaitForExit();
             }
 
             Log(String.Format("{0}{1}Cleaning up...", _tag, _indent));
@@ -59,6 +61,20 @@ namespace papyrus.Automation
             _bds.SendTellraw("Done rendering!");
 
             Processing = false;
+        }
+
+        public bool Abort()
+        {
+            bool result = false;
+            if (_renderer != null)
+            {
+                _renderer.Kill();
+                result = true;
+            } else {
+                result = false;
+            }
+
+            return result;
         }
     }
 }

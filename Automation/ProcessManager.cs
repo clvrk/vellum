@@ -8,7 +8,7 @@ namespace papyrus.Automation
     {
         public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
-        private string[] _ignoreMessages = new string[0];
+        private string[] _ignorePatterns = new string[0];
         private string _lastMessage = "";
         private Regex _pattern = null;
         public bool HasMatched { get; private set; } = false;
@@ -45,10 +45,10 @@ namespace papyrus.Automation
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
         ///<param name="startInfo">Start configuration for the process.</param>
         ///<param name="ignoreMessages">Array of messages that should not be redirected when written to the underlying processes stdout.</param>
-        public ProcessManager(ProcessStartInfo startInfo, string[] ignoreMessages)
+        public ProcessManager(ProcessStartInfo startInfo, string[] ignorePatterns)
             : this(startInfo)
         {
-            _ignoreMessages = ignoreMessages;
+            _ignorePatterns = ignorePatterns;
         }
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
@@ -158,11 +158,11 @@ namespace papyrus.Automation
             {
                 bool showMsg = true;
 
-                if (_ignoreMessages.Length > 0)
+                if (_ignorePatterns.Length > 0)
                 {
-                    foreach (string msg in _ignoreMessages)
+                    foreach (string pattern in _ignorePatterns)
                     {
-                        if (msg == e.Data)
+                        if (!String.IsNullOrWhiteSpace(e.Data) && Regex.Matches(e.Data, pattern).Count > 0)
                         {
                             showMsg = false;
                             break;
