@@ -11,13 +11,13 @@ papyrus.automation exposes some of it's functionality as a library. The library 
 
 ## Classes & structs
 ### **RunConfiguration**
-`namespace`: `papyrus`
+`namespace`: `Papyrus`
 
 A struct that represents a run configuration that defines certain paths, archiving-thresholds and arguments for child-processes. Please refer to the [configuration overview](https://github.com/clarkx86/papyrus-automation#configuration-overview) and [`RunConfiguration.cs`](https://github.com/clarkx86/papyrus-automation/blob/master/RunConfiguration.cs) file for a overview of properties.
 
 ---
 ### **ProcessManager**
-`namespace`: `papyrus.Automation`
+`namespace`: `Papyrus.Automation`
 
 Controls an underlying processes stdout/ stdin and provides methods to look out for specific patterns in the processes console output.
 #### Constructors
@@ -42,7 +42,7 @@ void SetMatchPattern(Regex regex)
 ```
 ---
 ### **BackupManager**
-`namespace`: `papyrus.Automation`
+`namespace`: `Papyrus.Automation`
 
 Create (hot-)backups of worlds and copy directories.
 #### Constructors
@@ -62,7 +62,7 @@ static void CopyDirectory(string sourceDir, string targetDir)
 ```
 ---
 ### **RenderManager**
-`namespace`: `papyrus.Automation`
+`namespace`: `Papyrus.Automation`
 
 Calls the papyrus.cs renderer 
 #### Constructors

@@ -20,10 +20,9 @@ This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automat
   - [Installing and configuring](#installing-and-configuring)
   - [Incremental backups](#incremental-backups)
   - [PapyrusCS integration](#papyruscs-integration)
-  - [Getting the most latest renders continuously](#getting-the-most-latest-renders-continuously)
 - [Configuration overview](#configuration-overview)
-- [Commands](#commands)
-- [Disclaimer! Read before using!](#disclaimer-read-before-using)
+- [Parameters & Commands](#parameters--commands)
+- [Disclaimer](#disclaimer-read-before-using)
 
 ## How does it work?
 When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call PapyrusCS with user-individual arguments to render the world using the temporary world-backup directory.
@@ -59,11 +58,6 @@ You can add your own arguments that will be attached when PapyrusCS is called. W
 
 When specifying additional arguments for `PapyrusGlobalArgs` please make sure to **append** to the pre-generated entry (do not edit the `-w` and `-o` parameters!).
 Please thoroughly verify that your paths and arguments are correct, you can find a configuration-example [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
-
-### Getting the most latest renders continuously
-If you want to get the most latest renders of your world continuously, set the `Interval` option in the `configuration.json` to a small number (e.g. `0.5` for 30 seconds) and `QuietMode` to `true`. This tool will automatically check if a previous render has already finished and won't spawn another PapyrusCS rendering process if it has not. Please note that you probably need to have a good server to do so and even then, you'll most likely need to specify additional arguments in the `PapyrusGlobalArgs` option (e.g. `--threads 1`, `-f jpg -q 50`,  etc.)! You can find an example configuration for contiunous renders [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/continuous_renders.json).
-
-**Please note:** This tool will only run on Linux-based systems and currently won't work on Windows, [find out more here](https://bugs.mojang.com/browse/BDS-2733).
 
 ## Configuration overview
 When you run this tool for the first time, it will generate a `configuration.json` and terminate. Before restarting the tool, edit this file to your needs. Here is a quick overview:
@@ -101,7 +95,7 @@ BackupsToKeep     Integer             Amount of backups to keep in the "ArchiveP
 BackupOnStartup   Boolean (!)         Whether to create a full backup of the specified
                                       world before starting the BDS process
                                       IMPORTANT: It is highly encouraged to leave
-                                      this setting on "true"!
+                                      this setting on "true"
 
 EnableRenders     Boolean (!)         Whether to create an interactive map of the world
                                       using PapyrusCS
@@ -133,16 +127,31 @@ BusyCommands      Boolean (!)         Allow executing BDS commands while the too
 StopBeforeBackup  Boolean (!)         Whether to stop, take a backup and then restart
                                       the server instead of taking a hot-backup
 
-TimeBeforeStop    Integer             Time in seconds before stopping the server for a
-                                      backup. Players on the server will be
+NotifyBeforeStop  Integer             Time in seconds before stopping the server for a
+                                      backup, players on the server will be
                                       notified with a chat message
+
+CheckForUpdates   Boolean (!)         Whether to check for updates on startup
 
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
 You can find an example configuration [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
 
-## Commands
-papyrus.automation also provides a few commands that you can execute to force-invoke backup- or rendering tasks.
+## Parameters & Commands
+### Parameters
+Overview of available launch parameters:
+```
+PARAMETER                             ABOUT
+----------------------------------------------------------
+-c | --config                         Specifies a custom configuration file
+                                      (Default: configuration.json)
+
+-h | --help                           Prints an overview of available parameters           
+```
+Parameters are optional and will default to their default values if not specified.
+
+### Commands
+papyrus.automation also provides a few new, and overloads some existing commands that you can execute to force-invoke backup- or rendering tasks and schedule server shutdowns.
 ```
 COMMAND                               ABOUT
 ----------------------------------------------------------
@@ -151,6 +160,12 @@ force start backup                    Forces taking a (hot-)backup (according to
 
 force start render                    Forces PapyrusCS to execute and render your
                                       world
+
+stop <time in seconds>                Schedules a server shutdown and notifies players
+                                      in-game
+
+reload papyrus                        Reloads the previously specified (or default)
+                                      configuration file
 ```
 
 ## Disclaimer! Read before using!

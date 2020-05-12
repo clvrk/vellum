@@ -5,13 +5,15 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using Newtonsoft.Json;
-using papyrus.Automation;
+using Mono.Options;
+using Papyrus.Automation;
+using Papyrus.Networking;
 
-namespace papyrus
+namespace Papyrus
 {
     class Program
     {
-        private const string _configFname = "configuration.json";
+        private static string _configPath = "configuration.json";
         private const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
         private static BackupManager _backupManager;
@@ -21,25 +23,63 @@ namespace papyrus
         private static Thread _ioThread;
         private static bool _readInput = true;
         public bool IsReady { get; private set; } = false;
+        private static Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
 
         static void Main(string[] args)
         {
-            Console.WriteLine("papyrus automation tool v{0}.{1}.{2} build {3}\n\tby clarkx86 & DeepBlue\n", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.Major, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.Minor, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.Revision, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.Build);
+            Console.WriteLine("papyrus automation tool v{0} build {1}\n\tby clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build);
 
-            if (File.Exists(_configFname))
+            bool printHelp = false;
+
+            OptionSet options = new OptionSet() {
+                { "h|help", "Displays a help screen.", (string h) => { printHelp = h != null; } },
+                { "c=|configuration=", "The configuration file to load settings from.", (string c) => { if (!String.IsNullOrWhiteSpace(c)) { _configPath = c.Trim(); } } }
+            };
+            System.Collections.Generic.List<string> extraOptions = options.Parse(args);
+
+            if (printHelp)
             {
-                using (StreamReader reader = new StreamReader(Path.Join(Directory.GetCurrentDirectory(), _configFname)))
-                {
-                    RunConfig = JsonConvert.DeserializeObject<RunConfiguration>(reader.ReadToEnd());
-                }
+                System.Console.WriteLine("Overview of available parameters:");
+                options.WriteOptionDescriptions(Console.Out);
+                System.Environment.Exit(0);
+            }
+            
+            if (File.Exists(_configPath))
+            {
+                RunConfig = LoadConfiguration(_configPath);
 
                 // ONLY FOR 1.14, should be fixed in the next BDS build
                 if (!RunConfig.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
-                    Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configFname);
+                    Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configPath);
                     System.Environment.Exit(0);
                 }
 
+                #region CONDITIONAL UPDATE CHECK
+                if (RunConfig.CheckForUpdates)
+                {
+                    Console.WriteLine("Checking for updates... ");
+                    UpdateChecker updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/papyrus-automation/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
+
+                    Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                    if (updateChecker.GetLatestVersion())
+                    {
+                        if (updateChecker.RemoteVersion > localVersion)
+                        {
+                            Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://github.com/clarkx86/papyrus-automation/releases/latest");
+                        }
+                    } else
+                    {
+                        System.Console.WriteLine("Could not check for updates.");
+                    }
+                }
+                #endregion
+
+                if (RunConfig.EnableRenders && String.IsNullOrWhiteSpace(RunConfig.PapyrusBinPath))
+                {
+                    Console.WriteLine("Disabling renders because no valid path to a Papyrus executable has been specified");
+                    RunConfig.EnableRenders = false;
+                }
 
                 #region BDS process and input thread
                 // BDS
@@ -91,7 +131,7 @@ namespace papyrus
                 if (!bds.IsRunning) { bds.Start(); }
 
                 // Wait until BDS successfully started
-                bds.WaitForMatch(new Regex(@"^.+ (Server started\.)"));
+                bds.WaitForMatch(@"^.+ (Server started\.)");
 
                 // Backup interval
                 if (RunConfig.EnableBackups)
@@ -106,12 +146,13 @@ namespace papyrus
 
                     if (RunConfig.StopBeforeBackup)
                     {
-                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.BackupInterval * 60000) - (RunConfig.TimeBeforeStop * 1000));
-                        backupNotificationTimer.AutoReset = true;
+                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.BackupInterval * 60000) - Math.Clamp(RunConfig.NotifyBeforeStop * 1000, 0, RunConfig.BackupInterval * 60000));
+                        backupNotificationTimer.AutoReset = false;
                         backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                         {
-                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.TimeBeforeStop));
+                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.NotifyBeforeStop));
                         };
+                        backupIntervalTimer.Start();
                     }
                 }
 
@@ -138,15 +179,15 @@ namespace papyrus
                         if (cmd.Count > 0)
                         {
                             bool result = false;
-                            switch (cmd[0].Groups[1].Value)
+                            switch (cmd[0].Captures[0].Value)
                             {
                                 case "force":
                                     if (cmd.Count >= 3)
                                     {
-                                        switch (cmd[1].Groups[1].Value)
+                                        switch (cmd[1].Captures[0].Value)
                                         {
                                             case "start":
-                                                switch (cmd[2].Groups[1].Value)
+                                                switch (cmd[2].Captures[0].Value)
                                                 {
                                                     case "backup":
                                                         InvokeBackup(worldPath, tempWorldPath);
@@ -159,29 +200,57 @@ namespace papyrus
                                                         break;
                                                 }
                                                 break;
-
-                                                /*
-                                                case "stop":
-                                                    switch (cmd[2].Groups[1].Value)
-                                                    {
-                                                        case "render":
-                                                            Console.WriteLine((_renderManager.Abort() ? "Render process stopped by user." : "Could not stop render process."));
-                                                            result = true;
-                                                        break;
-                                                    }
-                                                break;
-                                                */
                                         }
                                     }
                                     break;
 
                                 case "stop":
+                                    System.Timers.Timer shutdownTimer = new System.Timers.Timer();
+                                    shutdownTimer.AutoReset = false;
+                                    shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
+                                        // _renderManager.Abort();
+                                        bds.SendInput("stop");
+                                        bds.Process.WaitForExit();
+                                        bds.Close();
+                                        _readInput = false;
+                                        Console.Write("papyrus quit correctly");
+                                        shutdownTimer.Close();
+                                    };
+
+                                    if (cmd.Count == 2 && !String.IsNullOrWhiteSpace(cmd[1].Captures[0].Value))
+                                    {
+                                        try
+                                        {
+                                            double interval = Convert.ToDouble(cmd[1].Captures[0].Value);
+                                            shutdownTimer.Interval = (interval > 0 ? interval * 1000 : 1);
+                                            bds.SendTellraw(String.Format("Scheduled shutdown in {0} seconds...", interval));
+                                            result = true;
+                                        } catch
+                                        {
+                                            Console.WriteLine("Could not schedule shutdown because \"{0}\" is not a valid number.", cmd[1].Captures[0].Value);
+                                            result = false;
+                                        }
+                                    } else
+                                    {
+                                        shutdownTimer.Interval = 1;
+                                        result = true;
+                                    }
+
+                                    if (result)
+                                    {
+                                        shutdownTimer.Start();
+                                    }
+                                    break;
+
+                                case "reload":
+                                    if (cmd.Count == 2 && cmd[1].Captures[0].Value == "papyrus")
+                                    {
+                                        RunConfig = LoadConfiguration(_configPath);
+                                    } else
+                                    {
+                                        bds.SendInput(text);
+                                    }
                                     result = true;
-                                    // _renderManager.Abort();
-                                    bds.SendInput("stop");
-                                    bds.Process.WaitForExit();
-                                    _readInput = false;
-                                    Console.WriteLine("papyrus quit correctly.");
                                     break;
 
                                 default:
@@ -196,7 +265,7 @@ namespace papyrus
                     }
                     else
                     {
-                        Console.WriteLine("Could not execute papyrus command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configFname);
+                        Console.WriteLine("Could not execute papyrus command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configPath);
                     }
                 };
             }
@@ -204,7 +273,7 @@ namespace papyrus
             {
                 Console.WriteLine("No previous configuration file found. Creating one...");
 
-                using (StreamWriter writer = new StreamWriter(_configFname))
+                using (StreamWriter writer = new StreamWriter(_configPath))
                 {
                     writer.Write(JsonConvert.SerializeObject(new RunConfiguration()
                     {
@@ -221,25 +290,26 @@ namespace papyrus
                         ArchivePath = "./backups/",
                         BackupsToKeep = 10,
                         BackupOnStartup = true,
-                        EnableRenders = true,
                         EnableBackups = true,
-                        RenderInterval = 180,
+                        EnableRenders = true,
                         BackupInterval = 60,
+                        RenderInterval = 180,
                         PreExec = "",
                         PostExec = "",
                         QuietMode = false,
                         HideStdout = true,
                         BusyCommands = true,
                         StopBeforeBackup = (System.Environment.OSVersion.Platform != PlatformID.Win32NT ? false : true), // Should be reverted to "false" by default when 1.16 releases
-                        TimeBeforeStop = 60
+                        NotifyBeforeStop = 60,
+                        CheckForUpdates = true,
                     }, Formatting.Indented));
                 }
 
-                Console.WriteLine(String.Format("Done! Please edit the \"{0}\" file and restart this application.", _configFname));
+                Console.WriteLine(String.Format("Done! Please edit the \"{0}\" file and restart this application.", _configPath));
             }
         }
 
-        private static void InvokeBackup(string worldPath, string tempWorldPath)
+        public static void InvokeBackup(string worldPath, string tempWorldPath)
         {
             if (!_backupManager.Processing)
             {
@@ -251,7 +321,7 @@ namespace papyrus
             }
         }
 
-        private static void InvokeRender(string worldPath, string tempWorldPath)
+        public static void InvokeRender(string worldPath, string tempWorldPath)
         {
             if (!_backupManager.Processing && !_renderManager.Processing)
             {
@@ -262,6 +332,21 @@ namespace papyrus
             {
                 if (!Program.RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
             }
+        }
+
+        private static RunConfiguration LoadConfiguration(string configPath)
+        {
+            Console.Write("Loading configuration \"{0}\"... ", configPath);
+
+            RunConfiguration runConfig;
+            using (StreamReader reader = new StreamReader(Path.Join(Directory.GetCurrentDirectory(), _configPath)))
+            {
+                runConfig = JsonConvert.DeserializeObject<RunConfiguration>(reader.ReadToEnd());
+            }
+
+            Console.WriteLine("Done!");
+
+            return runConfig;
         }
     }
 }

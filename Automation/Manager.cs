@@ -1,6 +1,6 @@
 using System;
 
-namespace papyrus.Automation
+namespace Papyrus.Automation
 {
     public abstract class Manager
     {

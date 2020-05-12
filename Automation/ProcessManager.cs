@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace papyrus.Automation
+namespace Papyrus.Automation
 {
     public class ProcessManager
     {
@@ -10,7 +10,7 @@ namespace papyrus.Automation
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
         private string _lastMessage = "";
-        private Regex _pattern = null;
+        private string _pattern;
         public bool HasMatched { get; private set; } = false;
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
@@ -63,8 +63,8 @@ namespace papyrus.Automation
             }
         }
 
-        ///<summary>Stops the underlying process.</summary>
-        public void Stop()
+        ///<summary>Frees the underlying process.</summary>
+        public void Close()
         {
             this.Process.CancelOutputRead();
             this.Process.Close();
@@ -78,22 +78,22 @@ namespace papyrus.Automation
         }
 
         ///<summary>Halt program flow until the specified regex pattern has matched in the underlying processes stdout.</summary>
-        public void WaitForMatch(Regex regex)
+        public void WaitForMatch(string pattern)
         {
             bool ready = false;
             int count = -1;
 
             while (!ready)
             {
-                count = regex.Matches(_lastMessage).Count;
+                count = Regex.Matches(_lastMessage, pattern).Count;
                 ready = count >= 1 ? true : false;
             }
         }
 
-        public void SetMatchPattern(Regex regex)
+        public void SetMatchPattern(string pattern)
         {
             HasMatched = false;
-            _pattern = regex;
+            _pattern = pattern;
         }
 
         public string GetMatchedText()
@@ -146,7 +146,7 @@ namespace papyrus.Automation
 
             if (!HasMatched && _pattern != null)
             {
-                if (_pattern.Matches(e.Data).Count >= 1)
+                if (Regex.Matches(e.Data, _pattern).Count >= 1)
                 {
                     HasMatched = true;
                     _pattern = null;

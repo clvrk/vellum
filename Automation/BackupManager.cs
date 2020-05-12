@@ -4,7 +4,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace papyrus.Automation
+namespace Papyrus.Automation
 {
 
     public class BackupManager : Manager
@@ -47,8 +47,9 @@ namespace papyrus.Automation
             if (RunConfig.StopBeforeBackup && _bds.IsRunning)
             {
                 _bds.SendInput("stop");
-                _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
-                _bds.Stop();
+                // _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
+                _bds.Process.WaitForExit();
+                _bds.Close();
             }
 
             if (fullCopy || RunConfig.StopBeforeBackup)
@@ -82,7 +83,7 @@ namespace papyrus.Automation
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
 
                 _bds.SendInput("save hold");
-                _bds.SetMatchPattern(new Regex("^(" + Path.GetFileName(worldPath) + @"[\/]{1})"));
+                _bds.SetMatchPattern("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
 
                 while (!_bds.HasMatched)
                 {
@@ -159,7 +160,7 @@ namespace papyrus.Automation
                 Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
                 _bds.SendInput("save resume");
-                _bds.WaitForMatch(new Regex("^(Changes to the level are resumed.)"));
+                _bds.WaitForMatch("^(Changes to the level are resumed.)");
             }
 
             string tellrawMsg = "Finished creating backup!";
@@ -188,7 +189,7 @@ namespace papyrus.Automation
             if (RunConfig.StopBeforeBackup && !_bds.IsRunning)
             {
                 _bds.Start();
-                _bds.WaitForMatch(new Regex(@"^.+ (Server started\.)"));
+                _bds.WaitForMatch(@"^.+ (Server started\.)");
             }
             
             #region POST EXEC
@@ -212,6 +213,29 @@ namespace papyrus.Automation
 
             if (!Directory.Exists(destinationPath)) { Directory.CreateDirectory(destinationPath); }
 
+            string archiveName = String.Format("{0}_{1}.{2}", DateTime.Now.ToString("yyyy-MM-dd_HH-mm"), Path.GetFileName(sourcePath), "zip");
+            string archivePath = Path.Join(destinationPath, archiveName);
+
+            if (!File.Exists(archivePath))
+            {
+                try
+                {
+                    ZipFile.CreateFromDirectory(sourcePath, archivePath, CompressionLevel.Optimal, false);
+                    result = true;
+                }
+                catch
+                {
+                    Log(String.Format("Could not create archive \"{0}\"!", archiveName));
+                    result = false;
+                }
+            }
+            else
+            {
+                Log(String.Format("Could not create archive \"{0}\" because it already exists!", archiveName));
+                result = false;
+            }
+
+            // Delete older backups if threshold of archives to keep has been exceeded
             if (archivesToKeep != -1)
             {
                 string[] files = Directory.GetFiles(destinationPath);
@@ -239,28 +263,6 @@ namespace papyrus.Automation
                         }
                     }
                 }
-            }
-
-            string archiveName = String.Format("{0}_{1}.{2}", DateTime.Now.ToString("yyyy-MM-dd_HH-mm"), Path.GetFileName(sourcePath), "zip");
-            string archivePath = Path.Join(destinationPath, archiveName);
-
-            if (!File.Exists(archivePath))
-            {
-                try
-                {
-                    ZipFile.CreateFromDirectory(sourcePath, archivePath, CompressionLevel.Optimal, false);
-                    result = true;
-                }
-                catch
-                {
-                    Log(String.Format("Could not create archive \"{0}\"!", archiveName));
-                    result = false;
-                }
-            }
-            else
-            {
-                Log(String.Format("Could not create archive \"{0}\" because it already exists!", archiveName));
-                result = false;
             }
 
             return result;

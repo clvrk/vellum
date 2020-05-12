@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace papyrus
+namespace Papyrus
 {
     public struct RunConfiguration
     {
@@ -23,6 +23,7 @@ namespace papyrus
         public bool HideStdout;
         public bool BusyCommands;
         public bool StopBeforeBackup;
-        public int TimeBeforeStop;
+        public uint NotifyBeforeStop;
+        public bool CheckForUpdates;
     }
 }
