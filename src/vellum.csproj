@@ -4,10 +4,10 @@
     <DefineConstants Condition="'$(OutputType)' == 'Library'">IS_LIB</DefineConstants>
     <PublishSingleFile Condition="'$(OutputType)' == 'Exe' And '$(Configuration)' == 'Release'">true</PublishSingleFile>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>Papyrus</RootNamespace>
+    <RootNamespace>Vellum</RootNamespace>
     <Configurations>Debug;Release;</Configurations>
     <Authors>clarkx86</Authors>
-    <RepositoryUrl>https://github.com/clarkx86/papyrus-automation</RepositoryUrl>
+    <RepositoryUrl>https://github.com/clarkx86/vellum</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

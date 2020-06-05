@@ -4,12 +4,12 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
-using Newtonsoft.Json;
 using Mono.Options;
-using Papyrus.Automation;
-using Papyrus.Networking;
+using Newtonsoft.Json;
+using Vellum.Automation;
+using Vellum.Networking;
 
-namespace Papyrus
+namespace Vellum
 {
     class Program
     {
@@ -27,7 +27,7 @@ namespace Papyrus
 
         static void Main(string[] args)
         {
-            Console.WriteLine("papyrus automation tool v{0} build {1}\n\tby clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build);
+            Console.WriteLine("vellum v{0} build {1}\n\tby clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build);
 
             bool printHelp = false;
 
@@ -59,14 +59,14 @@ namespace Papyrus
                 if (RunConfig.CheckForUpdates)
                 {
                     Console.WriteLine("Checking for updates... ");
-                    UpdateChecker updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/papyrus-automation/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
+                    UpdateChecker updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
 
                     Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                     if (updateChecker.GetLatestVersion())
                     {
                         if (updateChecker.RemoteVersion > localVersion)
                         {
-                            Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://github.com/clarkx86/papyrus-automation/releases/latest");
+                            Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://git.io/vellum-latest");
                         }
                     } else
                     {
@@ -213,7 +213,7 @@ namespace Papyrus
                                         bds.Process.WaitForExit();
                                         bds.Close();
                                         _readInput = false;
-                                        Console.Write("papyrus quit correctly");
+                                        Console.Write("vellum quit correctly");
                                         shutdownTimer.Close();
                                     };
 
@@ -243,7 +243,7 @@ namespace Papyrus
                                     break;
 
                                 case "reload":
-                                    if (cmd.Count == 2 && cmd[1].Captures[0].Value == "papyrus")
+                                    if (cmd.Count == 2 && cmd[1].Captures[0].Value == "vellum")
                                     {
                                         RunConfig = LoadConfiguration(_configPath);
                                     } else
@@ -259,13 +259,13 @@ namespace Papyrus
                                     break;
                             }
 
-                            if (!result) { Console.WriteLine("Could not execute papyrus command \"{0}\".", text); }
+                            if (!result) { Console.WriteLine("Could not execute vellum command \"{0}\".", text); }
                         }
                         #endregion
                     }
                     else
                     {
-                        Console.WriteLine("Could not execute papyrus command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configPath);
+                        Console.WriteLine("Could not execute vellum command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configPath);
                     }
                 };
             }
@@ -280,7 +280,7 @@ namespace Papyrus
                         BdsPath = "",
                         WorldName = "Bedrock level",
                         PapyrusBinPath = "",
-                        PapyrusGlobalArgs = "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html -f webp -q -1 --deleteexistingupdatefolder",
+                        PapyrusGlobalArgs = "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html -f png -q 100 --deleteexistingupdatefolder",
                         PapyrusTasks = new string[] {
                              "--dim 0",
                              "--dim 1",

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Papyrus
+namespace Vellum
 {
     public struct RunConfiguration
     {

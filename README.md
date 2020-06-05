@@ -1,9 +1,9 @@
 <html>
     <body>
         <div align="center">
-            <img alt="papyrus.automation" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/04/papyrus-automation_logo-3.png">
+            <img alt="vellum" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/04/papyrus-automation_logo-3.png">
             <br>
-            <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?branch=experimental"></a>
+            <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?branch=master"></a>
             <a href="https://discord.gg/J2sBaXa"><img alt="Discord" src="https://img.shields.io/discord/569841820092203011?label=chat&logo=discord&logoColor=white"></a>
             <br><br>
         </div>
@@ -22,7 +22,9 @@ This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automat
   - [PapyrusCS integration](#papyruscs-integration)
 - [Configuration overview](#configuration-overview)
 - [Parameters & Commands](#parameters--commands)
-- [Disclaimer](#disclaimer-read-before-using)
+  - [Parameters](#parameters)
+  - [Commands](#commands)
+- [Disclaimer! Read before using!](#disclaimer-read-before-using)
 
 ## How does it work?
 When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call PapyrusCS with user-individual arguments to render the world using the temporary world-backup directory.
@@ -33,18 +35,18 @@ Before starting to set up this tool it is recommended to already have a [Bedrock
 If you choose not to go with the self-contained release of this tool, you must have the latest [.NET Core runtime](https://docs.microsoft.com/en-us/dotnet/core/install/linux-package-manager-ubuntu-1804#install-the-net-core-runtime) installed aswell.
 
 ### Installing and configuring
-First of all grab the latest pre-compiled binary from the release-tab or by [**clicking here**](https://github.com/clarkx86/papyrus-automation/releases/latest). You will find two releases: A larger self-contained archive which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system.
+First of all grab the latest pre-compiled binary from the release-tab or by [**clicking here**](https://github.com/clarkx86/vellum/releases/latest). You will find two releases: A larger self-contained archive which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system.
 Download and extract the archive and `cd` into the directory with the extracted files.
 
 You may need to give yourself execution permission with:
 ```
-chmod +x ./papyrus-automation
+chmod +x ./vellum
 ```
 Now run this tool for the first time by typing:
 ```
-./papyrus-automation
+./vellum
 ```
-This will generate a new `configuration.json` in the same directory. Edit this file and specify at least all required parameters ([see below for an overview](https://github.com/clarkx86/papyrus-automation#configuration)).
+This will generate a new `configuration.json` in the same directory. Edit this file and specify at least all required parameters ([see below for an overview](https://github.com/clarkx86/vellum#configuration)).
 
 Now you can restart the tool one more time with the same command as above. It should now spawn the BDS instance for you and execute renders on the specified interval (do not start the server manually).
 Once the server has launched through this tool you will be able to use the server console and use it's commands just like you normally would.
@@ -57,7 +59,7 @@ This tool can automatically execute the **PapyrusCS** map-rendering tool on an i
 You can add your own arguments that will be attached when PapyrusCS is called. When configuring you will find two keys, `PapyrusGlobalArgs` and an array called `PapyrusTasks`. The value in `PapyrusGlobalArgs` specifies arguments that will be attached for each PapyrusCS task when executed, while `PapyrusTasks` represent an array of individual processes (or tasks). Adding an entry to the array represents another task that will be executed after the previous one has finished, this way it is possible to make PapyrusCS render multiple dimensions or have different configurations in general. Again, the same `PapyrusGlobalArgs` will be present for each of these tasks individually.
 
 When specifying additional arguments for `PapyrusGlobalArgs` please make sure to **append** to the pre-generated entry (do not edit the `-w` and `-o` parameters!).
-Please thoroughly verify that your paths and arguments are correct, you can find a configuration-example [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
+Please thoroughly verify that your paths and arguments are correct, you can find a configuration-example [here](https://github.com/clarkx86/vellum/blob/master/examples/basic_example.json).
 
 ## Configuration overview
 When you run this tool for the first time, it will generate a `configuration.json` and terminate. Before restarting the tool, edit this file to your needs. Here is a quick overview:
@@ -135,7 +137,7 @@ CheckForUpdates   Boolean (!)         Whether to check for updates on startup
 
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
-You can find an example configuration [here](https://github.com/clarkx86/papyrus-automation/blob/master/examples/basic_example.json).
+You can find an example configuration [here](https://github.com/clarkx86/vellum/blob/master/examples/basic_example.json).
 
 ## Parameters & Commands
 ### Parameters
@@ -151,7 +153,7 @@ PARAMETER                             ABOUT
 Parameters are optional and will default to their default values if not specified.
 
 ### Commands
-papyrus.automation also provides a few new, and overloads some existing commands that you can execute to force-invoke backup- or rendering tasks and schedule server shutdowns.
+vellum also provides a few new, and overloads some existing commands that you can execute to force-invoke backup- or rendering tasks and schedule server shutdowns.
 ```
 COMMAND                               ABOUT
 ----------------------------------------------------------
@@ -164,11 +166,11 @@ force start render                    Forces PapyrusCS to execute and render you
 stop <time in seconds>                Schedules a server shutdown and notifies players
                                       in-game
 
-reload papyrus                        Reloads the previously specified (or default)
+reload vellum                         Reloads the previously specified (or default)
                                       configuration file
 ```
 
 ## Disclaimer! Read before using!
 Use this tool at **your own risk**! When using this software you agree to not hold us liable for any corrupted save data or deleted files. Make sure to configure everything correctly and thoroughly!
 
-If you find any bugs, please report them on the issue tracker here on GitHub, our dedicated [Discord server](https://discord.gg/J2sBaXa) or send me an [e-mail](mailto:clarkx86@outlook.com?subject=GitHub%3A%20papyrus-automation). 
+If you find any bugs, please report them on the issue tracker here on GitHub, our dedicated [Discord server](https://discord.gg/J2sBaXa) or send me an [e-mail](mailto:clarkx86@outlook.com?subject=GitHub%3A%20vellum). 

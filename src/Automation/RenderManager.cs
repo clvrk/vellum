@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Diagnostics;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
     public class RenderManager : Manager
     {

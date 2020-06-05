@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
     public class ProcessManager
     {

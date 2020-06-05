@@ -4,7 +4,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
 
     public class BackupManager : Manager
