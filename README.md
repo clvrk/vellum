@@ -4,14 +4,14 @@
             <div>
             <b>Quick links:</b>
             <br>
-            <a href="https://github.com/clarkx86/vellum/releases/latest">Download</a><b> | </b><a href="https://github.com/clarkx86/papyrus-automation/tree/master/docs">Documentation</a><b> | </b><a href="https://discord.gg/J2sBaXa">Discord</a>
+            <a href="https://github.com/clarkx86/vellum/releases/latest">Download</a><b> | </b><a href="https://github.com/clarkx86/vellum/tree/master/docs">Documentation</a><b> | </b><a href="https://discord.gg/J2sBaXa">Discord</a>
             </div>
             <hr>
             <img alt="vellum" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/06/vellum_logo.png">
             <br>
-            <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?branch=master"></a>
+            <a href="https://travis-ci.com/github/clarkx86/vellum"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/vellum.svg?branch=master"></a>
             <a href="https://discord.gg/J2sBaXa"><img alt="Discord" src="https://img.shields.io/discord/569841820092203011?label=chat&logo=discord&logoColor=white"></a>
-            <a href="https://github.com/clarkx86/vellum/releases/latest"><img alt="GitHub All Releases" src="https://img.shields.io/github/downloads/clarkx86/papyrus-automation/total"></a>
+            <a href="https://github.com/clarkx86/vellum/releases/latest"><img alt="GitHub All Releases" src="https://img.shields.io/github/downloads/clarkx86/vellum/total"></a>
             <br><br>
         </div>
     </body>
