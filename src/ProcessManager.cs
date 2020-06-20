@@ -104,13 +104,15 @@ namespace Vellum.Automation
                     count = Regex.Matches(current, pattern).Count;
                     ready = count >= 1 ? true : false;
                 }
-                else{
-                   //Begin the timeout if the stack is empty
-                   if(timeout > 2000){
-                       Console.WriteLine("[DEBUG] Stack empty and timeout.");
-                       _matchedText = current;
-                       return true;
-                   }
+                else
+                {
+                    //Begin the timeout if the stack is empty
+                    if (timeout > 2000)
+                    {
+                        Console.WriteLine("[DEBUG] Stack empty and timeout.");
+                        _matchedText = current;
+                        return true;
+                    }
                 }
                 timeout++;
                 System.Threading.Thread.Sleep(10);
@@ -171,26 +173,27 @@ namespace Vellum.Automation
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
         {
-          
+
             _lastMessage.Push(e.Data);
-            if(IsRunning){
-            if (playerleft)
-            { //do not run this while a backup is taken place since it would disrupt stdin. Since Processing is protected
-                if (e.Data.Length >= 1)
-                {
-                    string player_left = Regex.Match(e.Data, @"(Player disconnected)").Value;
-                    if (player_left.Length >= 1)
+            if (IsRunning)
+            {
+                if (playerleft)
+                { //do not run this while a backup is taken place since it would disrupt stdin. Since Processing is protected
+                    if (e.Data.Length >= 1)
                     {
-                        playerleft = false;
-                        nextbackup = true;
-                        //TODO: create a buffer for the Invoke command
-                        Program.backupIntervalTimer.Interval = 30000; //~30 second delay at best incase of too many players leave which sets the Processing flag to true
-                        Program.backupIntervalTimer.Start();
+                        string player_left = Regex.Match(e.Data, @"(Player disconnected)").Value;
+                        if (player_left.Length >= 1)
+                        {
+                            playerleft = false;
+                            nextbackup = true;
+                            //TODO: create a buffer for the Invoke command
+                            Program.backupIntervalTimer.Interval = 30000; //~30 second delay at best incase of too many players leave which sets the Processing flag to true
+                            Program.backupIntervalTimer.Start();
+
+                        }
 
                     }
-                
                 }
-            }
             }
             if (EnableConsoleOutput)
             {

@@ -117,15 +117,17 @@ namespace Vellum.Automation
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
                 _bds.SendInput("save hold");
-                if(_bds.WaitForMatch(@"Saving...")){
+                if (_bds.WaitForMatch(@"Saving..."))
+                {
                     //Something failed
-                  Console.WriteLine(_bds.GetMatchedText()); 
+                    Console.WriteLine(_bds.GetMatchedText());
 
                 }
                 _bds.SendInput("save query");
-                if(_bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})")){
-                   //Something Failed
-                   Console.WriteLine(_bds.GetMatchedText());
+                if (_bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})"))
+                {
+                    //Something Failed
+                    Console.WriteLine(_bds.GetMatchedText());
                 }
 
 

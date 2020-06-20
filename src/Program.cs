@@ -13,7 +13,7 @@ namespace Vellum
 {
     class Program
     {
-         public static System.Timers.Timer backupIntervalTimer;
+        public static System.Timers.Timer backupIntervalTimer;
         private static string _configPath = "configuration.json";
         public const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
@@ -25,7 +25,7 @@ namespace Vellum
         private static bool _readInput = true;
         public bool IsReady { get; private set; } = false;
         private static Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-       
+
         static void Main(string[] args)
         {
             Console.WriteLine("vellum v{0} build {1}\n\tby clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build);
@@ -44,7 +44,7 @@ namespace Vellum
                 options.WriteOptionDescriptions(Console.Out);
                 System.Environment.Exit(0);
             }
-            
+
             if (File.Exists(_configPath))
             {
                 RunConfig = LoadConfiguration(_configPath);
@@ -69,7 +69,8 @@ namespace Vellum
                         {
                             Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://git.io/vellum-latest");
                         }
-                    } else
+                    }
+                    else
                     {
                         System.Console.WriteLine("Could not check for updates.");
                     }
@@ -117,7 +118,7 @@ namespace Vellum
 
                 string worldPath = Path.Join(RunConfig.BdsPath, "worlds", RunConfig.WorldName);
                 string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
-                 
+
                 _renderManager = new RenderManager(bds, RunConfig);
                 _backupManager = new BackupManager(bds, RunConfig);
 
@@ -125,7 +126,7 @@ namespace Vellum
                 {
                     // Create initial world backup
                     Console.WriteLine("Creating initial world backup...");
-                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false,true); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
+                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false, true); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
                 }
 
                 // Start server in case the BackupManager hasn't started it yet
@@ -136,13 +137,14 @@ namespace Vellum
                 // Backup interval
                 if (RunConfig.EnableBackups)
                 {
-                   backupIntervalTimer = new System.Timers.Timer(RunConfig.BackupInterval * 60000);
+                    backupIntervalTimer = new System.Timers.Timer(RunConfig.BackupInterval * 60000);
                     backupIntervalTimer.AutoReset = true;
                     backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                    
-                        InvokeBackup(worldPath, tempWorldPath,false);
-                        if(backupIntervalTimer.Interval < RunConfig.BackupInterval * 60000){
+
+                        InvokeBackup(worldPath, tempWorldPath, false);
+                        if (backupIntervalTimer.Interval < RunConfig.BackupInterval * 60000)
+                        {
                             backupIntervalTimer.Interval = RunConfig.BackupInterval * 60000;
                         }
                     };
@@ -194,7 +196,7 @@ namespace Vellum
                                                 switch (cmd[2].Captures[0].Value)
                                                 {
                                                     case "backup":
-                                                        InvokeBackup(worldPath, tempWorldPath,true);
+                                                        InvokeBackup(worldPath, tempWorldPath, true);
                                                         result = true;
                                                         break;
 
@@ -211,7 +213,8 @@ namespace Vellum
                                 case "stop":
                                     System.Timers.Timer shutdownTimer = new System.Timers.Timer();
                                     shutdownTimer.AutoReset = false;
-                                    shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
+                                    shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                                    {
                                         // _renderManager.Abort();
                                         bds.SendInput("stop");
                                         bds.Process.WaitForExit();
@@ -229,12 +232,14 @@ namespace Vellum
                                             shutdownTimer.Interval = (interval > 0 ? interval * 1000 : 1);
                                             bds.SendTellraw(String.Format("Scheduled shutdown in {0} seconds...", interval));
                                             result = true;
-                                        } catch
+                                        }
+                                        catch
                                         {
                                             Console.WriteLine("Could not schedule shutdown because \"{0}\" is not a valid number.", cmd[1].Captures[0].Value);
                                             result = false;
                                         }
-                                    } else
+                                    }
+                                    else
                                     {
                                         shutdownTimer.Interval = 1;
                                         result = true;
@@ -250,7 +255,8 @@ namespace Vellum
                                     if (cmd.Count == 2 && cmd[1].Captures[0].Value == "vellum")
                                     {
                                         RunConfig = LoadConfiguration(_configPath);
-                                    } else
+                                    }
+                                    else
                                     {
                                         bds.SendInput(text);
                                     }
@@ -313,13 +319,13 @@ namespace Vellum
             }
         }
 
-        public static void InvokeBackup(string worldPath, string tempWorldPath,bool force)
+        public static void InvokeBackup(string worldPath, string tempWorldPath, bool force)
         {
-             
+
             if (!_backupManager.Processing)
             {
-            _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true,force);
-               
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true, force);
+
             }
             else
             {
@@ -331,7 +337,7 @@ namespace Vellum
         {
             if (!_backupManager.Processing && !_renderManager.Processing)
             {
-                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false,true);
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false, true);
                 _renderManager.Start(tempWorldPath);
             }
             else
