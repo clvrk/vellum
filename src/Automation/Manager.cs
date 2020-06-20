@@ -4,7 +4,7 @@ namespace Vellum.Automation
 {
     public abstract class Manager
     {
-        protected static string _tag = "[        PAPYRUS         ] ";
+        protected static string _tag = "[         VELLUM         ] ";
         protected static string _indent = "\t-> ";
         public bool Processing { get; protected set; } = false;
 

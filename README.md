@@ -1,16 +1,23 @@
 <html>
     <body>
         <div align="center">
-            <img alt="vellum" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/04/papyrus-automation_logo-3.png">
+            <div>
+            <b>Quick links:</b>
+            <br>
+            <a href="https://github.com/clarkx86/vellum/releases/latest">Download</a><b> | </b><a href="https://github.com/clarkx86/papyrus-automation/tree/master/docs">Documentation</a><b> | </b><a href="https://discord.gg/J2sBaXa">Discord</a>
+            </div>
+            <hr>
+            <img alt="vellum" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/06/vellum_logo.png">
             <br>
             <a href="https://travis-ci.com/github/clarkx86/papyrus-automation"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/papyrus-automation.svg?branch=master"></a>
             <a href="https://discord.gg/J2sBaXa"><img alt="Discord" src="https://img.shields.io/discord/569841820092203011?label=chat&logo=discord&logoColor=white"></a>
+            <a href="https://github.com/clarkx86/vellum/releases/latest"><img alt="GitHub All Releases" src="https://img.shields.io/github/downloads/clarkx86/papyrus-automation/total"></a>
             <br><br>
         </div>
     </body>
 </html>
 
-This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation** tool primarily made to create incremental backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
+**vellum** is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation tool** primarily made to create incremental backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## Table of contents
 - [Table of contents](#table-of-contents)
@@ -24,7 +31,7 @@ This is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automat
 - [Parameters & Commands](#parameters--commands)
   - [Parameters](#parameters)
   - [Commands](#commands)
-- [Disclaimer! Read before using!](#disclaimer-read-before-using)
+- [Disclaimer](#disclaimer-read-before-using)
 
 ## How does it work?
 When this tool gets executed it creates an initial full backup of your world. Then it will launch your BDS instance as a child-process and redirects its stdout and stdin. It will then listen for certain "events" from BDS's stdout (like "Server started" messages, etc.) to determin it's current status. On an interval it will execute the `save hold | query | resume` commands and copies the required files to a temporary backup folder and compresses the world as a `.zip`-archive. It will then call PapyrusCS with user-individual arguments to render the world using the temporary world-backup directory.
@@ -66,13 +73,60 @@ When you run this tool for the first time, it will generate a `configuration.jso
 ```
 KEY               VALUE               ABOUT
 ----------------------------------------------------------
-BdsPath           String  (!)         Path to the BDS root directory
+REQUIRED SETTINGS
+-----------------
+BdsBinPath        String  (!)         Absolute path to the the Bedrock Server
+                                      executable (similar to "/../../bedrock_server"
+                                      on Linux or "/../../bedrock_server.exe" on 
+                                      Windows)
 
 WorldName         String  (!)         Name of the world located in the servers
                                       /worlds/ directory (specify merely the name and
                                       not the full path)
+---------------
+BACKUP SETTINGS
+---------------
+EnableBackups     Boolean (!)         Whether to create world-backups as .zip-archives
 
-PapyrusBinPath    String              Path to the papyrus executable (inclusive)
+BackupInterval    Double              Time in minutes to take a backup and create a
+                                      .zip-archive
+
+ArchivePath       String              Path where world-backup archives should be
+                                      created
+
+BackupsToKeep     Integer             Amount of backups to keep in the "ArchivePath"-
+                                      directory, old backups automatically get deleted
+
+StopBeforeBackup  Boolean             Whether to stop, take a backup and then restart
+                                      the server instead of taking a hot-backup
+
+NotifyBeforeStop  Integer             Time in seconds before stopping the server for a
+                                      backup, players on the server will be
+                                      notified with a chat message
+
+BackupOnStartup   Boolean             Whether to create a full backup of the specified
+                                      world before starting the BDS process
+                                      IMPORTANT: It is highly encouraged to leave
+                                      this setting on "true"
+
+PreExec           String              An arbitrary command that gets executed before
+                                      each backup starts
+
+PostExec          String              An arbitrary command that gets executed after
+                                      each has finished
+---------------
+RENDER SETTINGS
+---------------
+EnableRenders     Boolean (!)         Whether to create an interactive map of the world
+                                      using PapyrusCS
+
+PapyrusBinPath    String              Absolute path to the papyrus executable (similar
+                                      to "/../../PapyrusCs" on Linux or
+                                      "/../../PapyrusCs.exe" on Windows)
+
+PapyrusOutputPath String              Output path for the rendered papyrus map
+
+RenderInterval    Double              Time in minutes to run a backup and render map
 
 PapyrusGlobalArgs String              Global arguments that are present for each
                                       rendering task specified in the "PapyrusArgs"-
@@ -85,36 +139,9 @@ PapyrusTasks      String [Array]      An array of additional arguments for papyr
                                       PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
                                       dimensions)
-
-PapyrusOutputPath String              Output path for the rendered papyrus map
-
-ArchivePath       String              Path where world-backup archives should be
-                                      created
-
-BackupsToKeep     Integer             Amount of backups to keep in the "ArchivePath"-
-                                      directory, old backups automatically get deleted
-
-BackupOnStartup   Boolean (!)         Whether to create a full backup of the specified
-                                      world before starting the BDS process
-                                      IMPORTANT: It is highly encouraged to leave
-                                      this setting on "true"
-
-EnableRenders     Boolean (!)         Whether to create an interactive map of the world
-                                      using PapyrusCS
-
-EnableBackups     Boolean (!)         Whether to create world-backups as .zip-archives
-
-RenderInterval    Double              Time in seconds to run a backup and render map
-
-BackupInterval    Double              Time in seconds to take a backup and create a
-                                      .zip-archive
-
-PreExec           String              An arbitrary command that gets executed before
-                                      each backup starts
-
-PostExec          String              An arbitrary command that gets executed after
-                                      each has finished
-
+-------------------
+ADDITIONAL SETTINGS
+-------------------
 QuietMode         Boolean (!)         Suppress notifying players in-game that papyrus
                                       is creating a backup and render
 
@@ -126,15 +153,8 @@ HideStdout        Boolean (!)         Whether to hide the console output generat
 BusyCommands      Boolean (!)         Allow executing BDS commands while the tool is
                                       taking backups
 
-StopBeforeBackup  Boolean (!)         Whether to stop, take a backup and then restart
-                                      the server instead of taking a hot-backup
-
-NotifyBeforeStop  Integer             Time in seconds before stopping the server for a
-                                      backup, players on the server will be
-                                      notified with a chat message
-
 CheckForUpdates   Boolean (!)         Whether to check for updates on startup
-
+----------------------------------------------------------
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
 You can find an example configuration [here](https://github.com/clarkx86/vellum/blob/master/examples/basic_example.json).
@@ -145,7 +165,7 @@ Overview of available launch parameters:
 ```
 PARAMETER                             ABOUT
 ----------------------------------------------------------
--c | --config                         Specifies a custom configuration file
+-c | --configuration                  Specifies a custom configuration file
                                       (Default: configuration.json)
 
 -h | --help                           Prints an overview of available parameters           

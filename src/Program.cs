@@ -49,7 +49,7 @@ namespace Vellum
                 RunConfig = LoadConfiguration(_configPath);
 
                 // ONLY FOR 1.14, should be fixed in the next BDS build
-                if (!RunConfig.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
+                if (!RunConfig.Backups.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
                     Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configPath);
                     System.Environment.Exit(0);
@@ -75,24 +75,26 @@ namespace Vellum
                 }
                 #endregion
 
-                if (RunConfig.EnableRenders && String.IsNullOrWhiteSpace(RunConfig.PapyrusBinPath))
+                if (RunConfig.Renders.EnableRenders && String.IsNullOrWhiteSpace(RunConfig.Renders.PapyrusBinPath))
                 {
                     Console.WriteLine("Disabling renders because no valid path to a Papyrus executable has been specified");
-                    RunConfig.EnableRenders = false;
+                    RunConfig.Renders.EnableRenders = false;
                 }
+
+                string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
 
                 #region BDS process and input thread
                 // BDS
                 ProcessStartInfo serverStartInfo = new ProcessStartInfo()
                 {
-                    FileName = Path.Join(RunConfig.BdsPath, System.Environment.OSVersion.Platform == PlatformID.Unix ? "bedrock_server" : "bedrock_server.exe"),
-                    WorkingDirectory = RunConfig.BdsPath
+                    FileName = RunConfig.BdsBinPath,
+                    WorkingDirectory = bdsDirPath
                 };
 
                 // Set environment variable for linux-based systems
                 if (System.Environment.OSVersion.Platform == PlatformID.Unix)
                 {
-                    serverStartInfo.EnvironmentVariables.Add("LD_LIBRARY_PATH", RunConfig.BdsPath);
+                    serverStartInfo.EnvironmentVariables.Add("LD_LIBRARY_PATH", bdsDirPath);
                 }
 
                 ProcessManager bds = new ProcessManager(serverStartInfo, new string[] {
@@ -100,27 +102,28 @@ namespace Vellum
                     "^(Saving...)",
                     "^(A previous save has not been completed.)",
                     "^(Data saved. Files are now ready to be copied.)",
-                    "^(Changes to the level are resumed.)"
+                    "^(Changes to the level are resumed.)",
+                    "Running AutoCompaction..."
                 });
 
                 // Input thread
-                _ioThread = new Thread(new ThreadStart(() =>
+                _ioThread = new Thread(() =>
                 {
                     while (_readInput)
                     {
                         inStream?.Invoke(Console.ReadLine());
                     }
-                }));
+                });
                 _ioThread.Start();
                 #endregion
 
-                string worldPath = Path.Join(RunConfig.BdsPath, "worlds", RunConfig.WorldName);
+                string worldPath = Path.Join(bdsDirPath, "worlds", RunConfig.WorldName);
                 string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
 
                 _renderManager = new RenderManager(bds, RunConfig);
                 _backupManager = new BackupManager(bds, RunConfig);
 
-                if (RunConfig.BackupOnStartup)
+                if (RunConfig.Backups.BackupOnStartup)
                 {
                     // Create initial world backup
                     Console.WriteLine("Creating initial world backup...");
@@ -134,9 +137,9 @@ namespace Vellum
                 bds.WaitForMatch(@"^.+ (Server started\.)");
 
                 // Backup interval
-                if (RunConfig.EnableBackups)
+                if (RunConfig.Backups.EnableBackups)
                 {
-                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.BackupInterval * 60000);
+                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.Backups.BackupInterval * 60000);
                     backupIntervalTimer.AutoReset = true;
                     backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
@@ -144,22 +147,22 @@ namespace Vellum
                     };
                     backupIntervalTimer.Start();
 
-                    if (RunConfig.StopBeforeBackup)
+                    if (RunConfig.Backups.StopBeforeBackup)
                     {
-                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.BackupInterval * 60000) - Math.Clamp(RunConfig.NotifyBeforeStop * 1000, 0, RunConfig.BackupInterval * 60000));
+                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.Backups.BackupInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Backups.BackupInterval * 60000));
                         backupNotificationTimer.AutoReset = false;
                         backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                         {
-                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.NotifyBeforeStop));
+                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.Backups.NotifyBeforeStop));
                         };
                         backupIntervalTimer.Start();
                     }
                 }
 
                 // Render interval
-                if (RunConfig.EnableRenders)
+                if (RunConfig.Renders.EnableRenders)
                 {
-                    System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.RenderInterval * 60000);
+                    System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.Renders.RenderInterval * 60000);
                     renderIntervalTimer.AutoReset = true;
                     renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
@@ -213,7 +216,7 @@ namespace Vellum
                                         bds.Process.WaitForExit();
                                         bds.Close();
                                         _readInput = false;
-                                        Console.Write("vellum quit correctly");
+                                        Console.WriteLine("vellum quit correctly");
                                         shutdownTimer.Close();
                                     };
 
@@ -277,30 +280,36 @@ namespace Vellum
                 {
                     writer.Write(JsonConvert.SerializeObject(new RunConfiguration()
                     {
-                        BdsPath = "",
+                        BdsBinPath = System.Environment.OSVersion.Platform != PlatformID.Win32NT ? "bedrock_server" : "bedrock_server.exe",
                         WorldName = "Bedrock level",
-                        PapyrusBinPath = "",
-                        PapyrusGlobalArgs = "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html -f png -q 100 --deleteexistingupdatefolder",
-                        PapyrusTasks = new string[] {
-                             "--dim 0",
-                             "--dim 1",
-                             "--dim 2"
+                        Backups = new BackupConfig()
+                        {
+                            EnableBackups = true,
+                            StopBeforeBackup = (System.Environment.OSVersion.Platform != PlatformID.Win32NT ? false : true), // Should be reverted to "false" by default when 1.16 releases
+                            NotifyBeforeStop = 60,
+                            ArchivePath = "./backups/",
+                            BackupsToKeep = 10,
+                            BackupOnStartup = true,
+                            BackupInterval = 60,
+                            PreExec = "",
+                            PostExec = "",
                         },
-                        PapyrusOutputPath = "",
-                        ArchivePath = "./backups/",
-                        BackupsToKeep = 10,
-                        BackupOnStartup = true,
-                        EnableBackups = true,
-                        EnableRenders = true,
-                        BackupInterval = 60,
-                        RenderInterval = 180,
-                        PreExec = "",
-                        PostExec = "",
+                        Renders = new RenderConfig()
+                        {
+                            EnableRenders = true,
+                            RenderInterval = 180,
+                            PapyrusBinPath = "",
+                            PapyrusGlobalArgs = "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html -f png -q 100 --deleteexistingupdatefolder",
+                            PapyrusTasks = new string[] {
+                                "--dim 0",
+                                "--dim 1",
+                                "--dim 2"
+                            },
+                            PapyrusOutputPath = ""
+                        },
                         QuietMode = false,
                         HideStdout = true,
                         BusyCommands = true,
-                        StopBeforeBackup = (System.Environment.OSVersion.Platform != PlatformID.Win32NT ? false : true), // Should be reverted to "false" by default when 1.16 releases
-                        NotifyBeforeStop = 60,
                         CheckForUpdates = true,
                     }, Formatting.Indented));
                 }
