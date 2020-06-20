@@ -90,26 +90,34 @@ namespace Vellum.Automation
         }
 
         ///<summary>Halt program flow until the specified regex pattern has matched in the underlying processes stdout.</summary>
-        public void WaitForMatch(string pattern)
+        public bool WaitForMatch(string pattern)
         {
             bool ready = false;
             int count = -1;
             string current = "";
-
-
+            int timeout = 0;
             while (!ready)
             {
                 if (_lastMessage.Count > 0)
                 {
-
                     current = _lastMessage.Pop();
                     count = Regex.Matches(current, pattern).Count;
                     ready = count >= 1 ? true : false;
                 }
-
+                else{
+                   //Begin the timeout if the stack is empty
+                   if(timeout > 2000){
+                       Console.WriteLine("[DEBUG] Stack empty and timeout.");
+                       _matchedText = current;
+                       return true;
+                   }
+                }
+                timeout++;
+                System.Threading.Thread.Sleep(10);
             }
 
             _matchedText = current;
+            return false;
         }
         public string GetMatchedText()
         {
@@ -163,7 +171,9 @@ namespace Vellum.Automation
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
         {
+          
             _lastMessage.Push(e.Data);
+            if(IsRunning){
             if (playerleft)
             { //do not run this while a backup is taken place since it would disrupt stdin. Since Processing is protected
                 if (e.Data.Length >= 1)
@@ -171,15 +181,16 @@ namespace Vellum.Automation
                     string player_left = Regex.Match(e.Data, @"(Player disconnected)").Value;
                     if (player_left.Length >= 1)
                     {
-                        _lastMessage.Pop();
                         playerleft = false;
                         nextbackup = true;
-                        Program.backupIntervalTimer.Interval = 100;
+                        //TODO: create a buffer for the Invoke command
+                        Program.backupIntervalTimer.Interval = 30000; //~30 second delay at best incase of too many players leave which sets the Processing flag to true
                         Program.backupIntervalTimer.Start();
 
                     }
-
+                
                 }
+            }
             }
             if (EnableConsoleOutput)
             {

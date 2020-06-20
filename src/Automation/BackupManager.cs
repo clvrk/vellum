@@ -117,9 +117,16 @@ namespace Vellum.Automation
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
                 _bds.SendInput("save hold");
-                _bds.WaitForMatch(@"Saving...");
+                if(_bds.WaitForMatch(@"Saving...")){
+                    //Something failed
+                  Console.WriteLine(_bds.GetMatchedText()); 
+
+                }
                 _bds.SendInput("save query");
-                _bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
+                if(_bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})")){
+                   //Something Failed
+                   Console.WriteLine(_bds.GetMatchedText());
+                }
 
 
                 Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");

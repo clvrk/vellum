@@ -315,9 +315,11 @@ namespace Vellum
 
         public static void InvokeBackup(string worldPath, string tempWorldPath,bool force)
         {
+             
             if (!_backupManager.Processing)
             {
-                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true,force);
+            _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true,force);
+               
             }
             else
             {
