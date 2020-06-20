@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
     public class ProcessManager
     {
@@ -135,7 +135,7 @@ namespace Papyrus.Automation
             if (IsRunning && !Program.RunConfig.QuietMode)
             {
                 #if !IS_LIB
-                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[PAPYRUS]\"},{\"text\":\"§r " + message + "\"}]}");
+                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[VELLUM]\"},{\"text\":\"§r " + message + "\"}]}");
                 #endif
             }                
         }
@@ -170,7 +170,7 @@ namespace Papyrus.Automation
                     }
                 }
 
-                if (showMsg) { Console.WriteLine(e.Data); }
+                if (showMsg) Console.WriteLine(e.Data);
             }
         }
     }

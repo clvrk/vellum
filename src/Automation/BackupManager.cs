@@ -4,7 +4,7 @@ using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
 
     public class BackupManager : Manager
@@ -32,10 +32,10 @@ namespace Papyrus.Automation
             Processing = true;
 
             #region PRE EXEC
-            if (!string.IsNullOrWhiteSpace(RunConfig.PreExec))
+            if (!string.IsNullOrWhiteSpace(RunConfig.Backups.PreExec))
             {
                 Log(String.Format("{0}Executing pre-command...", _tag));
-                ProcessManager.RunCustomCommand(RunConfig.PreExec);
+                ProcessManager.RunCustomCommand(RunConfig.Backups.PreExec);
             }
             #endregion
 
@@ -44,7 +44,7 @@ namespace Papyrus.Automation
             _bds.SendTellraw("Creating backup...");
 
             // Shutdown server and take full backup
-            if (RunConfig.StopBeforeBackup && _bds.IsRunning)
+            if (RunConfig.Backups.StopBeforeBackup && _bds.IsRunning)
             {
                 _bds.SendInput("stop");
                 // _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
@@ -52,7 +52,7 @@ namespace Papyrus.Automation
                 _bds.Close();
             }
 
-            if (fullCopy || RunConfig.StopBeforeBackup)
+            if (fullCopy || RunConfig.Backups.StopBeforeBackup)
             {
                 if (Directory.Exists(destinationPath))
                 {
@@ -108,8 +108,9 @@ namespace Papyrus.Automation
                 // ACTUAL COPYING BEGINS HERE
                 for (uint i = 0; i < sourceFiles.GetLength(0); i++)
                 {
-                    // The last 3 files always seem to be the world metadata which need to be copied into the worlds root directory instead of the "db"-subdirectory
-                    string subDir = (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
+                    // As of Bedrock Server 1.14, the queried files list doesn't include the "/db/" path, but to take precaution for future versions check if the "/db/" part is present 
+                    // The last 3 files always seem to be the world metadata which need to be copied into the worlds root directory instead of the "db"-subdirectory (this only matters if the "/db/" part isn't available in the queried files list)
+                    string subDir = (Regex.Match(sourceFiles[i, 0], Path.GetFileName(worldPath) + @"(\/db\/)").Groups.Count < 2) && (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
                     string filePath = Path.Join(worldPath + subDir, Path.GetFileName(sourceFiles[i, 0]));
                     string targetPath = destinationPath + subDir + sourceFiles[i, 0];
 
@@ -125,6 +126,8 @@ namespace Papyrus.Automation
                         {
                             targetStream.WriteByte((byte)sourceStream.ReadByte());
                         }
+
+                        targetStream.Flush();
                     }
                 }
 
@@ -169,7 +172,7 @@ namespace Papyrus.Automation
             if (archive)
             {
                 Log(String.Format("{0}{1}Archiving world backup...", _tag, _indent));
-                if (Archive(destinationPath, RunConfig.ArchivePath, RunConfig.BackupsToKeep))
+                if (Archive(destinationPath, RunConfig.Backups.ArchivePath, RunConfig.Backups.BackupsToKeep))
                 {
                     Log(String.Format("{0}{1}Archiving done!", _tag, _indent));
                 }
@@ -186,17 +189,17 @@ namespace Papyrus.Automation
             Log(String.Format("{0}Backup done!", _tag));
 
 
-            if (RunConfig.StopBeforeBackup && !_bds.IsRunning)
+            if (RunConfig.Backups.StopBeforeBackup && !_bds.IsRunning)
             {
                 _bds.Start();
                 _bds.WaitForMatch(@"^.+ (Server started\.)");
             }
             
             #region POST EXEC
-            if (!string.IsNullOrWhiteSpace(RunConfig.PostExec))
+            if (!string.IsNullOrWhiteSpace(RunConfig.Backups.PostExec))
             {
                 Log(String.Format("{0}Executing post-command...", _tag));
-                ProcessManager.RunCustomCommand(RunConfig.PostExec);
+                ProcessManager.RunCustomCommand(RunConfig.Backups.PostExec);
             }
             #endregion
 

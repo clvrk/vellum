@@ -5,7 +5,7 @@ using System.IO;
 using System.Net;
 using Newtonsoft.Json;
 
-namespace Papyrus.Networking
+namespace Vellum.Networking
 {
     internal enum ReleaseProvider
     {

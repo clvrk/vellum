@@ -1,5 +1,5 @@
-# Using papyrus.automation as a library
-papyrus.automation exposes some of it's functionality as a library. The library is available as a NuGet package from [GitHub packages](https://github.com/clarkx86/papyrus-automation/packages).
+# Using vellum as a library
+vellum exposes some of it's functionality as a library. The library is available as a NuGet package from [GitHub packages](https://github.com/clarkx86/vellum/packages).
 
 ## Table of contents
 1. [**Overview**](#classes--structs)
@@ -11,13 +11,13 @@ papyrus.automation exposes some of it's functionality as a library. The library 
 
 ## Classes & structs
 ### **RunConfiguration**
-`namespace`: `Papyrus`
+`namespace`: `Vellum`
 
-A struct that represents a run configuration that defines certain paths, archiving-thresholds and arguments for child-processes. Please refer to the [configuration overview](https://github.com/clarkx86/papyrus-automation#configuration-overview) and [`RunConfiguration.cs`](https://github.com/clarkx86/papyrus-automation/blob/master/RunConfiguration.cs) file for a overview of properties.
+A struct that represents a run configuration that defines certain paths, archiving-thresholds and arguments for child-processes. Please refer to the [configuration overview](https://github.com/clarkx86/vellum#configuration-overview) and [`RunConfiguration.cs`](https://github.com/clarkx86/vellum/blob/master/RunConfiguration.cs) file for a overview of properties.
 
 ---
 ### **ProcessManager**
-`namespace`: `Papyrus.Automation`
+`namespace`: `Vellum.Automation`
 
 Controls an underlying processes stdout/ stdin and provides methods to look out for specific patterns in the processes console output.
 #### Constructors
@@ -42,7 +42,7 @@ void SetMatchPattern(Regex regex)
 ```
 ---
 ### **BackupManager**
-`namespace`: `Papyrus.Automation`
+`namespace`: `Vellum.Automation`
 
 Create (hot-)backups of worlds and copy directories.
 #### Constructors
@@ -62,9 +62,9 @@ static void CopyDirectory(string sourceDir, string targetDir)
 ```
 ---
 ### **RenderManager**
-`namespace`: `Papyrus.Automation`
+`namespace`: `Vellum.Automation`
 
-Calls the papyrus.cs renderer 
+Calls the PapyrusCS renderer.
 #### Constructors
 ```csharp
 RenderManager(ProcessManager p, RunConfiguration runConfig);
@@ -74,5 +74,3 @@ RenderManager(ProcessManager p, RunConfiguration runConfig);
 void StartRender(string worldPath)
 // Calls papyrus.cs with the previously specified settings in the RunConfiguration on the world in the "worldPath"-directory
 ```
-
-## Examples

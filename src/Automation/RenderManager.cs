@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Diagnostics;
 
-namespace Papyrus.Automation
+namespace Vellum.Automation
 {
     public class RenderManager : Manager
     {
@@ -31,21 +31,21 @@ namespace Papyrus.Automation
             BackupManager.CopyDirectory(worldPath, tempPathCopy);
 
             // Prepare map render output directory
-            if (!Directory.Exists(RunConfig.PapyrusOutputPath))
+            if (!Directory.Exists(RunConfig.Renders.PapyrusOutputPath))
             {
-                Directory.CreateDirectory(RunConfig.PapyrusOutputPath);
+                Directory.CreateDirectory(RunConfig.Renders.PapyrusOutputPath);
             }
 
-            for (int i = 0; i < RunConfig.PapyrusTasks.Length; i++)
+            for (int i = 0; i < RunConfig.Renders.PapyrusTasks.Length; i++)
             {
                 _renderer = new Process();
-                string args = RunConfig.PapyrusGlobalArgs.Replace("${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy)).Replace("${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.PapyrusOutputPath)) + " " + RunConfig.PapyrusTasks[i];
-                _renderer.StartInfo.FileName = RunConfig.PapyrusBinPath;
-                _renderer.StartInfo.Arguments = args;
+                _renderer.StartInfo.FileName = RunConfig.Renders.PapyrusBinPath;
+                _renderer.StartInfo.WorkingDirectory = Path.GetDirectoryName(RunConfig.Renders.PapyrusBinPath);
+                _renderer.StartInfo.Arguments = $"{RunConfig.Renders.PapyrusGlobalArgs.Replace("${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy)).Replace("${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath))} {RunConfig.Renders.PapyrusTasks[i]}";
                 _renderer.StartInfo.RedirectStandardOutput = RunConfig.HideStdout;
                 _renderer.StartInfo.RedirectStandardInput = true;
 
-                Log(String.Format("{0}{1}Rendering map {2}/{3}...", _tag, _indent, i + 1, RunConfig.PapyrusTasks.Length));
+                Log(String.Format("{0}{1}Rendering map {2}/{3}...", _tag, _indent, i + 1, RunConfig.Renders.PapyrusTasks.Length));
 
                 _renderer.Start();
                 _renderer.WaitForExit();
