@@ -10,6 +10,7 @@ namespace Vellum.Automation
     public class BackupManager : Manager
     {
         private ProcessManager _bds;
+
         public RunConfiguration RunConfig;
         ///<summary>Time in milliseconds to wait until sending next <code>save query</code> command to <code>ProcessManager</code>'s process</summary>
         public int QueryTimeout { get; set; } = 500;
@@ -27,10 +28,11 @@ namespace Vellum.Automation
         ///<param name="destinationPath">Path to copy the world to.</param>
         ///<param name="fullCopy">Whether to copy the whole world directory instead of just the updated files. The server must not be running for a full copy.</param>
         ///<param name="archive">Whether to archive the backup as a compressed .zip-file.</param>
-        public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
+        public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive, bool force)
         {
-            Processing = true;
 
+            Processing = true;
+            _bds.playerleft = false; //In case.
             #region PRE EXEC
             if (!string.IsNullOrWhiteSpace(RunConfig.PreExec))
             {
@@ -39,10 +41,43 @@ namespace Vellum.Automation
             }
             #endregion
 
+
+            //Check for players
+            if (_bds.IsRunning)
+            {
+
+                _bds.SendInput("list");
+                _bds.WaitForMatch(@"^(There are [0-9]{1,5}\/[0-9]{1,5} players online\:)");
+                string players_str = Regex.Match(_bds.GetMatchedText(), @"([0-9]{1,5}\/)").Value; //should return the There are... string 
+                players_str = players_str.Remove(players_str.Length - 1); //since the value returned is 0/ so the '/' has to be removed.
+                int players = Int32.Parse(players_str);
+                Console.WriteLine("{0} Players Online: {1}", _tag, players);
+                if (_bds.nextbackup == false && players == 0 && force == false)
+                {
+                    Console.WriteLine("{0}Backup not taken due to no players online.", _tag);
+                    _bds.SendInput("save resume");
+                    Processing = false;
+                    _bds.playerleft = true;
+                    return;
+                }
+                if (players > 0 || force)
+                {
+                    _bds.nextbackup = true;
+                    Console.WriteLine("{0}Taking backup", _tag);
+                    Console.WriteLine("\n");
+
+                }
+                else
+                {
+                    _bds.nextbackup = false;
+                    Console.WriteLine("{0}No player is online,next backup will not be taken", _tag);
+                    Console.WriteLine("\n");
+                }
+
+            }
             Log(String.Format("{0}Creating backup...", _tag));
             // Send tellraw message 1/2
             _bds.SendTellraw("Creating backup...");
-
             // Shutdown server and take full backup
             if (RunConfig.StopBeforeBackup && _bds.IsRunning)
             {
@@ -81,15 +116,11 @@ namespace Vellum.Automation
             else
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
-
                 _bds.SendInput("save hold");
-                _bds.SetMatchPattern("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
+                _bds.WaitForMatch(@"Saving...");
+                _bds.SendInput("save query");
+                _bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
 
-                while (!_bds.HasMatched)
-                {
-                    _bds.SendInput("save query");
-                    Thread.Sleep(QueryTimeout);
-                }
 
                 Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");
                 MatchCollection matches = fileListRegex.Matches(_bds.GetMatchedText());
@@ -161,6 +192,7 @@ namespace Vellum.Automation
 
                 _bds.SendInput("save resume");
                 _bds.WaitForMatch("^(Changes to the level are resumed.)");
+
             }
 
             string tellrawMsg = "Finished creating backup!";
@@ -191,7 +223,7 @@ namespace Vellum.Automation
                 _bds.Start();
                 _bds.WaitForMatch(@"^.+ (Server started\.)");
             }
-            
+
             #region POST EXEC
             if (!string.IsNullOrWhiteSpace(RunConfig.PostExec))
             {
@@ -201,6 +233,7 @@ namespace Vellum.Automation
             #endregion
 
             Processing = false;
+            _bds.playerleft = true; //listen for player 'events' 
         }
 
         ///<summary>Compresses a world as a .zip archive to the <code>destinationPath</code> directory and optionally deletes old backups.</summary>

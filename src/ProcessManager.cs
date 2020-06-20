@@ -1,16 +1,21 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-
+using System.Collections.Generic;
+using System.IO;
 namespace Vellum.Automation
 {
+
     public class ProcessManager
     {
+
+        public bool playerleft = true;
+        public bool nextbackup = false;
         public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
-        private string _lastMessage = "";
-        private string _pattern;
+        public Stack<string> _lastMessage = new Stack<string>();
+        //private string _pattern;
         public bool HasMatched { get; private set; } = false;
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
@@ -23,7 +28,9 @@ namespace Vellum.Automation
                 try
                 {
                     result = Process.HasExited ? false : true;
-                } catch {
+                }
+                catch
+                {
                     result = false;
                 }
                 return result;
@@ -33,6 +40,7 @@ namespace Vellum.Automation
         ///<param name="startInfo">Start configuration for the process.</param>
         public ProcessManager(ProcessStartInfo startInfo)
         {
+
             _startInfo = startInfo;
             this.Process = new Process();
             this.Process.StartInfo = startInfo;
@@ -40,6 +48,8 @@ namespace Vellum.Automation
             this.Process.StartInfo.RedirectStandardOutput = true;
             this.Process.StartInfo.UseShellExecute = false;
             this.Process.OutputDataReceived += OutputTextReceived;
+
+
         }
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
@@ -58,7 +68,9 @@ namespace Vellum.Automation
             {
                 this.Process.BeginOutputReadLine();
                 return true;
-            } else {
+            }
+            else
+            {
                 return false;
             }
         }
@@ -82,25 +94,34 @@ namespace Vellum.Automation
         {
             bool ready = false;
             int count = -1;
+            string current = "";
+
 
             while (!ready)
             {
-                count = Regex.Matches(_lastMessage, pattern).Count;
-                ready = count >= 1 ? true : false;
+                if (_lastMessage.Count > 0)
+                {
+
+                    current = _lastMessage.Pop();
+                    count = Regex.Matches(current, pattern).Count;
+                    ready = count >= 1 ? true : false;
+                }
+
             }
-        }
 
-        public void SetMatchPattern(string pattern)
-        {
-            HasMatched = false;
-            _pattern = pattern;
+            _matchedText = current;
         }
-
         public string GetMatchedText()
         {
             return _matchedText;
         }
-
+        /*
+ public void SetMatchPattern(string pattern)
+        {
+            HasMatched = false;
+            _pattern = pattern;
+        }
+        */
         ///<summary>Executes a custom command in the operating systems shell.</summary>
         ///<param name="cmd">Command to execute.</param>
         public static void RunCustomCommand(string cmd)
@@ -134,26 +155,32 @@ namespace Vellum.Automation
         {
             if (IsRunning && !Program.RunConfig.QuietMode)
             {
-                #if !IS_LIB
-                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[PAPYRUS]\"},{\"text\":\"§r " + message + "\"}]}");
-                #endif
-            }                
+#if !IS_LIB
+                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[VELLUM]\"},{\"text\":\"§r " + message + "\"}]}");
+#endif
+            }
         }
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
         {
-            _lastMessage = e.Data;
-
-            if (!HasMatched && _pattern != null)
-            {
-                if (Regex.Matches(e.Data, _pattern).Count >= 1)
+            _lastMessage.Push(e.Data);
+            if (playerleft)
+            { //do not run this while a backup is taken place since it would disrupt stdin. Since Processing is protected
+                if (e.Data.Length >= 1)
                 {
-                    HasMatched = true;
-                    _pattern = null;
-                    _matchedText = e.Data;
+                    string player_left = Regex.Match(e.Data, @"(Player disconnected)").Value;
+                    if (player_left.Length >= 1)
+                    {
+                        _lastMessage.Pop();
+                        playerleft = false;
+                        nextbackup = true;
+                        Program.backupIntervalTimer.Interval = 100;
+                        Program.backupIntervalTimer.Start();
+
+                    }
+
                 }
             }
-
             if (EnableConsoleOutput)
             {
                 bool showMsg = true;
@@ -173,5 +200,7 @@ namespace Vellum.Automation
                 if (showMsg) { Console.WriteLine(e.Data); }
             }
         }
+
+
     }
 }
