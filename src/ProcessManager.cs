@@ -15,7 +15,7 @@ namespace Vellum.Automation
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
         public Stack<string> _lastMessage = new Stack<string>();
-        //private string _pattern;
+        private string _pattern;
         public bool HasMatched { get; private set; } = false;
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
@@ -109,7 +109,10 @@ namespace Vellum.Automation
                     //Begin the timeout if the stack is empty
                     if (timeout > 2000)
                     {
-                        Console.WriteLine("[DEBUG] Stack empty and timeout.");
+                        if (EnableConsoleOutput)
+                        {
+                            Console.WriteLine("[DEBUG] Stack empty and timeout.");
+                        }
                         _matchedText = current;
                         return true;
                     }
@@ -125,13 +128,13 @@ namespace Vellum.Automation
         {
             return _matchedText;
         }
-        /*
- public void SetMatchPattern(string pattern)
+
+        public void SetMatchPattern(string pattern)
         {
             HasMatched = false;
             _pattern = pattern;
         }
-        */
+
         ///<summary>Executes a custom command in the operating systems shell.</summary>
         ///<param name="cmd">Command to execute.</param>
         public static void RunCustomCommand(string cmd)
@@ -189,11 +192,21 @@ namespace Vellum.Automation
                             //TODO: create a buffer for the Invoke command
                             Program.backupIntervalTimer.Interval = 30000; //~30 second delay at best incase of too many players leave which sets the Processing flag to true
                             Program.backupIntervalTimer.Start();
-
                         }
 
                     }
+
                 }
+                if (!HasMatched && _pattern != null)
+                {
+                    if (Regex.Matches(e.Data, _pattern).Count >= 1)
+                    {
+                        HasMatched = true;
+                        _pattern = null;
+                        _matchedText = e.Data;
+                    }
+                }
+
             }
             if (EnableConsoleOutput)
             {

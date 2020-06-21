@@ -51,10 +51,10 @@ namespace Vellum.Automation
                 string players_str = Regex.Match(_bds.GetMatchedText(), @"([0-9]{1,5}\/)").Value; //should return the There are... string 
                 players_str = players_str.Remove(players_str.Length - 1); //since the value returned is 0/ so the '/' has to be removed.
                 int players = Int32.Parse(players_str);
-                Console.WriteLine("{0} Players Online: {1}", _tag, players);
+                Log(String.Format("{0} Players Online: {1}", _tag, players));
                 if (_bds.nextbackup == false && players == 0 && force == false)
                 {
-                    Console.WriteLine("{0}Backup not taken due to no players online.", _tag);
+                    Log(String.Format("{0}Backup not taken due to no players online.", _tag));
                     _bds.SendInput("save resume");
                     Processing = false;
                     _bds.playerleft = true;
@@ -63,15 +63,15 @@ namespace Vellum.Automation
                 if (players > 0 || force)
                 {
                     _bds.nextbackup = true;
-                    Console.WriteLine("{0}Taking backup", _tag);
-                    Console.WriteLine("\n");
+                    Log(String.Format("{0}Taking backup", _tag));
+
 
                 }
                 else
                 {
                     _bds.nextbackup = false;
-                    Console.WriteLine("{0}No player is online,next backup will not be taken", _tag);
-                    Console.WriteLine("\n");
+                    Log(String.Format("{0}No player is online,next backup will not be taken", _tag));
+
                 }
 
             }
@@ -117,19 +117,14 @@ namespace Vellum.Automation
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
                 _bds.SendInput("save hold");
-                if (_bds.WaitForMatch(@"Saving..."))
-                {
-                    //Something failed
-                    Console.WriteLine(_bds.GetMatchedText());
 
-                }
-                _bds.SendInput("save query");
-                if (_bds.WaitForMatch("^(" + Path.GetFileName(worldPath) + @"[\/]{1})"))
-                {
-                    //Something Failed
-                    Console.WriteLine(_bds.GetMatchedText());
-                }
+                _bds.SetMatchPattern("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
 
+                while (!_bds.HasMatched)
+                {
+                    _bds.SendInput("save query");
+                    Thread.Sleep(QueryTimeout);
+                }
 
                 Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");
                 MatchCollection matches = fileListRegex.Matches(_bds.GetMatchedText());
