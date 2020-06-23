@@ -25,11 +25,16 @@ script:
   - dotnet publish vellum.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
 before_deploy:
   - cd bin/Release/netcoreapp3.1/${RUNTIME}/publish && zip ${ARTIFACT_NAME}.zip ./*
+  - wget -q https://github.com/${TRAVIS_REPO_SLUG}/releases/download/${TRAVIS_TAG}/sha256sums.txt || true
+  - sha256sum ${ARTIFACT_NAME}.zip >> sha256sums.txt
 deploy:
   provider: releases
   token:
     secure: "bkpf8FnXooiKvbjgm/5kFV6y+5Apgi6sQm1iIdOfRTF4dkAdJG/p0fATFoR1V8HINIF9gN2bV7HefQz3UbgspbawPE/DK+HcHj1gHSjZ7QiabTSX4PgM5KfV0q54abIyot5kfyf+fj5RRrEsARFeDVpIi+B/VnyKJKb+5X9uTG8CzS1w4Afacjfh4gGFAW1aBAue/Oii96u42SZGk/gDX62kYUoiG1RXcx8acYSJOG241RfqiXN3zxZorhxItBLlAJUdC9n2FXPVw9awi/Joc643SE8TdBcqcggLKBieX8NVIk1YPIipanPZsubGafje78cqiMVquAxpq3BBamJEzKy4UPbW9SzI9/pkQtDuoaG6RvbtEjobKVKsKLeaP/uXE3fVorTeIpdNKmqkbag9yG0gOMu6JHkfEZCOHDBQXYSo22bevzO9dcWP8VmYwreaiUfYoZB3i+VEvZHH1k3ymEr4ckKchrg+/Enkj1SwzdDNdgl6PWsVt6Di+I8IMSMQ/Zqh3p6IhFWaX6WwIMbGcK2wkN1eqGg/aGfXCHoTatBi55zRYfvY3NlMzkuHX7Gn1Bf7Su6GR4NfBD7PbweQDI6dXO5bqfst9Dvq2a57SaDeRBzKtrPHWZ50ri3ppImucIUZmus4dCJlJSr2f1FVublzF2lI7EJI3u5eb8f7KH4="
-  file: ${ARTIFACT_NAME}.zip
+  file:
+    - ${ARTIFACT_NAME}.zip
+    - sha256sums.txt
+  overwrite: true
   skip_cleanup: true
   on:
     repo: clarkx86/vellum

@@ -110,11 +110,15 @@ namespace Vellum.Automation
                 {
                     // As of Bedrock Server 1.14, the queried files list doesn't include the "/db/" path, but to take precaution for future versions check if the "/db/" part is present 
                     // The last 3 files always seem to be the world metadata which need to be copied into the worlds root directory instead of the "db"-subdirectory (this only matters if the "/db/" part isn't available in the queried files list)
-                    string subDir = (Regex.Match(sourceFiles[i, 0], Path.GetFileName(worldPath) + @"(\/db\/)").Groups.Count < 2) && (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
-                    string filePath = Path.Join(worldPath + subDir, Path.GetFileName(sourceFiles[i, 0]));
-                    string targetPath = destinationPath + subDir + sourceFiles[i, 0];
+                    string subDir = (Regex.Match(sourceFiles[i, 0], @"(\/db\/)").Captures.Count < 1) && (i < sourceFiles.GetLength(0) - 3) ? "/db" : "";
+                    string filePath = Path.Join(worldPath, subDir, sourceFiles[i, 0]);
+                    string targetPath = Path.Join(destinationPath, subDir, sourceFiles[i, 0]);
 
-                    // System.Console.WriteLine("\"{0}\" -> \"{1}\"", filePath, targetPath);
+                    /*
+                    System.Console.WriteLine($"Old:\t{sourceFiles[i, 0]}\nNew:\t{filePath}");
+                    System.Console.WriteLine(Regex.Match(sourceFiles[i, 0], @"(\/db\/)").Captures.Count);
+                    System.Console.WriteLine("\"{0}\" -> \"{1}\"", filePath, targetPath);
+                    */
 
                     using (FileStream sourceStream = File.Open(filePath, FileMode.Open, FileAccess.Read))
                     using (FileStream targetStream = File.Open(targetPath, FileMode.Create, FileAccess.Write))
@@ -214,7 +218,8 @@ namespace Vellum.Automation
         {
             bool result = false;
 
-            if (!Directory.Exists(destinationPath)) { Directory.CreateDirectory(destinationPath); }
+            if (!Directory.Exists(destinationPath))
+                Directory.CreateDirectory(destinationPath);
 
             string archiveName = String.Format("{0}_{1}.{2}", DateTime.Now.ToString("yyyy-MM-dd_HH-mm"), Path.GetFileName(sourcePath), "zip");
             string archivePath = Path.Join(destinationPath, archiveName);

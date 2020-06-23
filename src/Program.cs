@@ -27,7 +27,7 @@ namespace Vellum
 
         static void Main(string[] args)
         {
-            Console.WriteLine("vellum v{0} build {1}\n\tby clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build);
+            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build, new string(' ', 7));
 
             bool printHelp = false;
 
@@ -131,7 +131,8 @@ namespace Vellum
                 }
 
                 // Start server in case the BackupManager hasn't started it yet
-                if (!bds.IsRunning) { bds.Start(); }
+                if (!bds.IsRunning)
+                    bds.Start();
 
                 // Wait until BDS successfully started
                 bds.WaitForMatch(@"^.+ (Server started\.)");
@@ -216,8 +217,8 @@ namespace Vellum
                                         bds.Process.WaitForExit();
                                         bds.Close();
                                         _readInput = false;
-                                        Console.WriteLine("vellum quit correctly");
                                         shutdownTimer.Close();
+                                        Console.WriteLine("vellum quit correctly");
                                     };
 
                                     if (cmd.Count == 2 && !String.IsNullOrWhiteSpace(cmd[1].Captures[0].Value))
