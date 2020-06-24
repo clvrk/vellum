@@ -24,10 +24,18 @@ namespace Vellum
         private static bool _readInput = true;
         public bool IsReady { get; private set; } = false;
         private static Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+        private static Version _bdsVersion;
+        private static UpdateChecker _updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
 
         static void Main(string[] args)
         {
-            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), _localVersion.Build, new string(' ', 7));
+            string debugTag = "";
+
+            #if DEBUG
+            debugTag = " DEBUG";
+            #endif
+
+            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + debugTag, _localVersion.Build, new string(' ', 7));
 
             bool printHelp = false;
 
@@ -48,25 +56,25 @@ namespace Vellum
             {
                 RunConfig = LoadConfiguration(_configPath);
 
-                // ONLY FOR 1.14, should be fixed in the next BDS build
+                #if !DEBUG
+                // Not yet supported due to file permission issues
                 if (!RunConfig.Backups.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
                 {
                     Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configPath);
                     System.Environment.Exit(0);
                 }
+                #endif
 
                 #region CONDITIONAL UPDATE CHECK
                 if (RunConfig.CheckForUpdates)
                 {
                     Console.WriteLine("Checking for updates... ");
-                    UpdateChecker updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
 
-                    Version localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-                    if (updateChecker.GetLatestVersion())
+                    if (_updateChecker.GetLatestVersion())
                     {
-                        if (updateChecker.RemoteVersion > localVersion)
+                        if (_updateChecker.RemoteVersion > _localVersion)
                         {
-                            Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://git.io/vellum-latest");
+                            Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://git.io/vellum-latest");
                         }
                     } else
                     {
@@ -98,13 +106,25 @@ namespace Vellum
                 }
 
                 ProcessManager bds = new ProcessManager(serverStartInfo, new string[] {
-                    "^(" + RunConfig.WorldName.Trim() + @"\/\d+\.\w+\:\d+)",
+                    "^(" + RunConfig.WorldName.Trim() + @"(?>\/db)?\/\d+\.\w+\:\d+)",
                     "^(Saving...)",
                     "^(A previous save has not been completed.)",
                     "^(Data saved. Files are now ready to be copied.)",
                     "^(Changes to the level are resumed.)",
                     "Running AutoCompaction..."
                 });
+
+                // Stop BDS gracefully on unhandled exceptions
+                if (RunConfig.StopBdsOnException)
+                {
+                    System.AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
+                    {
+                        System.Console.WriteLine("Stopping Bedrock server due to an unhandled exception from vellum...");
+
+                        if (bds.IsRunning)
+                            bds.SendInput("stop");
+                    };
+                }
 
                 // Input thread
                 _ioThread = new Thread(() =>
@@ -116,6 +136,12 @@ namespace Vellum
                 });
                 _ioThread.Start();
                 #endregion
+
+                // Store current BDS version
+                bds.RegisterMatchHandler(@"^.+ Version (\d+\.\d+\.\d+(?>\.\d+)?)", (object sender, MatchedEventArgs e) =>
+                {
+                    _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
+                });
 
                 string worldPath = Path.Join(bdsDirPath, "worlds", RunConfig.WorldName);
                 string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
@@ -132,10 +158,10 @@ namespace Vellum
 
                 // Start server in case the BackupManager hasn't started it yet
                 if (!bds.IsRunning)
+                {
                     bds.Start();
-
-                // Wait until BDS successfully started
-                bds.WaitForMatch(@"^.+ (Server started\.)");
+                    bds.WaitForMatch(@"^.+ (Server started\.)"); // Wait until BDS successfully started
+                }
 
                 // Backup interval
                 if (RunConfig.Backups.EnableBackups)
@@ -257,6 +283,25 @@ namespace Vellum
                                     result = true;
                                     break;
 
+                                case "updatecheck":
+                                    Console.WriteLine("Checking for updates...");
+
+                                    // BDS
+                                    UpdateChecker bdsUpdateChecker = new UpdateChecker(ReleaseProvider.HTML, "https://minecraft.net/en-us/download/server/bedrock/", @"https:\/\/minecraft\.azureedge\.net\/bin-" + (System.Environment.OSVersion.Platform == PlatformID.Win32NT ? "win" : "linux") + @"\/bedrock-server-(\d+\.\d+\.\d+(?>\.\d+)?)\.zip");
+                                    if (bdsUpdateChecker.GetLatestVersion())
+                                            Console.WriteLine(String.Format("Bedrock Server:\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_bdsVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), bdsUpdateChecker.RemoteVersion > _bdsVersion ? "outdated" : "up to date"));
+                                    else
+                                            Console.WriteLine("Could not check for Bedrock server updates...");
+
+                                    // vellum
+                                    if (_updateChecker.GetLatestVersion())
+                                            Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
+                                    else
+                                            Console.WriteLine("Could not check for vellum updates...");
+                                    
+                                    result = true;
+                                    break;
+
                                 default:
                                     result = true;
                                     bds.SendInput(text);
@@ -312,6 +357,7 @@ namespace Vellum
                         HideStdout = true,
                         BusyCommands = true,
                         CheckForUpdates = true,
+                        StopBdsOnException = true
                     }, Formatting.Indented));
                 }
 

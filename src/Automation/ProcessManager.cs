@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace Vellum.Automation
@@ -14,6 +15,8 @@ namespace Vellum.Automation
         public bool HasMatched { get; private set; } = false;
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
+        public delegate void MatchHandler(object sender, MatchedEventArgs e);
+        private Dictionary<string, MatchHandler> _matchHandlers = new Dictionary<string, MatchHandler>();
 
         public bool IsRunning
         {
@@ -77,13 +80,32 @@ namespace Vellum.Automation
             this.Process.StandardInput.Write(cmd + "\n");
         }
 
-        ///<summary>Halt program flow until the specified regex pattern has matched in the underlying processes stdout.</summary>
+
+        ///<summary>Halt program flow until the specified regex pattern has matched in the underlying processes <c>stdout</c>.</summary>
+        ///<param name="pattern">The regex pattern to match</param>
         public void WaitForMatch(string pattern)
         {
+            WaitForMatch(pattern, 0);
+        }
+
+        ///<summary>Halt program flow until the specified regex pattern has matched in the underlying processes <c>stdout</c> during the span of the given timeout.</summary>
+        ///<param name="pattern">The regex pattern to match</param>
+        ///<param name="timeout">Timeout in milliseconds (0 or less for no timeout)</param>
+        public void WaitForMatch(string pattern, double timeout)
+        {
             bool ready = false;
+            bool timedOut = false;
             int count = -1;
 
-            while (!ready)
+            if (timeout > 0)
+            {
+                System.Timers.Timer timeoutTimer = new System.Timers.Timer(timeout);
+                timeoutTimer.AutoReset = false;
+                timeoutTimer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) => timedOut = true;
+                timeoutTimer.Start();
+            }
+
+            while (!ready && !timedOut)
             {
                 count = Regex.Matches(_lastMessage, pattern).Count;
                 ready = count >= 1 ? true : false;
@@ -94,6 +116,11 @@ namespace Vellum.Automation
         {
             HasMatched = false;
             _pattern = pattern;
+        }
+
+        public void RegisterMatchHandler(string pattern, MatchHandler handler)
+        {
+            _matchHandlers.Add(pattern, handler);
         }
 
         public string GetMatchedText()
@@ -114,11 +141,11 @@ namespace Vellum.Automation
                 case 2:
                 case 3:
                     shell = @"C:\Windows\System32\cmd.exe";
-                    args = "/k \"" + cmd + "\"";
+                    args = $"/C \"{cmd}\"";
                     break;
                 case 4:
                     shell = "/bin/bash";
-                    args = "-c \"" + cmd + "\"";
+                    args = $"-c \"{cmd}\"";
                     break;
             }
 
@@ -142,36 +169,56 @@ namespace Vellum.Automation
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
         {
-            _lastMessage = e.Data;
-
-            if (!HasMatched && _pattern != null)
+            if (!String.IsNullOrEmpty(e.Data))
             {
-                if (Regex.Matches(e.Data, _pattern).Count >= 1)
-                {
-                    HasMatched = true;
-                    _pattern = null;
-                    _matchedText = e.Data;
-                }
-            }
+                _lastMessage = e.Data;
 
-            if (EnableConsoleOutput)
-            {
-                bool showMsg = true;
-
-                if (_ignorePatterns.Length > 0)
+                if (!HasMatched && _pattern != null)
                 {
-                    foreach (string pattern in _ignorePatterns)
+                    if (Regex.Matches(e.Data, _pattern).Count >= 1)
                     {
-                        if (!String.IsNullOrWhiteSpace(e.Data) && Regex.Matches(e.Data, pattern).Count > 0)
-                        {
-                            showMsg = false;
-                            break;
-                        }
+                        HasMatched = true;
+                        _pattern = null;
+                        _matchedText = e.Data;
                     }
                 }
 
-                if (showMsg) Console.WriteLine(e.Data);
+                // Custom match handlers
+                if (_matchHandlers.Count > 0)
+                {
+                    foreach (string key in _matchHandlers.Keys)
+                    {
+                        MatchCollection matches = Regex.Matches(e.Data, key);
+                        if (matches.Count > 0)
+                            _matchHandlers[key].Invoke(this, new MatchedEventArgs() { Matches = matches });
+                    }
+                }
+
+                if (EnableConsoleOutput)
+                {
+                    bool showMsg = true;
+
+                    if (_ignorePatterns.Length > 0)
+                    {
+                        foreach (string pattern in _ignorePatterns)
+                        {
+                            if (!String.IsNullOrWhiteSpace(e.Data) && Regex.Matches(e.Data, pattern).Count > 0)
+                            {
+                                showMsg = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (showMsg)
+                        Console.WriteLine(e.Data);
+                }
             }
         }
+    }
+
+    public class MatchedEventArgs : EventArgs
+    {
+        public MatchCollection Matches;
     }
 }

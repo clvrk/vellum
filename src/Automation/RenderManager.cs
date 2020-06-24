@@ -42,7 +42,9 @@ namespace Vellum.Automation
                 Dictionary<string, string> placeholderReplacements = new Dictionary<string, string>()
                 {
                     { "$WORLD_PATH", String.Format("\"{0}\"", tempPathCopy) },
-                    { "$OUTPUT_PATH", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath) }
+                    { "$OUTPUT_PATH", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath) },
+                    { "${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy) },
+                    { "${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath) }
                 };
 
                 string args = RunConfig.Renders.PapyrusGlobalArgs;
