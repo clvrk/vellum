@@ -166,6 +166,11 @@ StopBdsOnException Boolean (!)        Should vellum unexpectedly crash due to an
                                       unhandled exception, this sets whether to send a 
                                       "stop" command to the BDS process to prevent it
                                       from keep running in detached mode otherwise 
+
+BdsWatchdog        Boolean (!)        Monitor BDS process and restart if unexpectedly
+                                      exited. Will try to restart process a maximum of 
+                                      3 times. This retry count is reset when BDS
+                                      instance is deemed stable.
 ----------------------------------------------------------
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
