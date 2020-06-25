@@ -12,6 +12,7 @@
             <a href="https://travis-ci.com/github/clarkx86/vellum"><img alt="Travis-CI" src="https://travis-ci.com/clarkx86/vellum.svg?branch=master"></a>
             <a href="https://discord.gg/J2sBaXa"><img alt="Discord" src="https://img.shields.io/discord/569841820092203011?label=chat&logo=discord&logoColor=white"></a>
             <a href="https://github.com/clarkx86/vellum/releases/latest"><img alt="GitHub All Releases" src="https://img.shields.io/github/downloads/clarkx86/vellum/total"></a>
+            <img alt="Latest supported version" src="https://img.shields.io/endpoint?url=https://cdn.clarkx86.com/vellum/vellum_latest-bds.json&label=bedrock">
             <br><br>
         </div>
     </body>
@@ -96,6 +97,12 @@ ArchivePath        String             Path where world-backup archives should be
 
 BackupsToKeep      Integer            Amount of backups to keep in the "ArchivePath"-
                                       directory, old backups automatically get deleted
+
+OnActiviyOnly      Boolean            If set to "true", vellum will only perform a
+                                      backup if at least one player has connected
+                                      since the previous backup was taken, in order to
+                                      only archive worlds which have actually been
+                                      modified
 
 StopBeforeBackup   Boolean            Whether to stop, take a backup and then restart
                                       the server instead of taking a hot-backup

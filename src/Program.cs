@@ -122,7 +122,11 @@ namespace Vellum
                         System.Console.WriteLine("Stopping Bedrock server due to an unhandled exception from vellum...");
 
                         if (bds.IsRunning)
+                        {
                             bds.SendInput("stop");
+                            bds.Process.WaitForExit();
+                            bds.Close();
+                        }
                     };
                 }
 
@@ -142,6 +146,27 @@ namespace Vellum
                 {
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
+
+
+                uint playerCount = 0;
+                bool nextBackup = true;
+                if (RunConfig.Backups.OnActivityOnly)
+                {
+                    nextBackup = false;
+
+                    // Player connect/ disconnect messages
+                    bds.RegisterMatchHandler(@".+Player connected:\s(.+),", (object sender, MatchedEventArgs e) =>
+                    {
+                        playerCount++;
+                        nextBackup = true;
+                    });
+
+                    bds.RegisterMatchHandler(@".+Player disconnected:\s(.+),", (object sender, MatchedEventArgs e) =>
+                    {
+                        playerCount--;
+                    });
+                }
+                
 
                 string worldPath = Path.Join(bdsDirPath, "worlds", RunConfig.WorldName);
                 string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
@@ -170,7 +195,14 @@ namespace Vellum
                     backupIntervalTimer.AutoReset = true;
                     backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                        InvokeBackup(worldPath, tempWorldPath);
+                        if (nextBackup)
+                        {
+                            InvokeBackup(worldPath, tempWorldPath);
+
+                            if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
+                                nextBackup = false;
+                        } else
+                            Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
                     };
                     backupIntervalTimer.Start();
 
@@ -335,6 +367,7 @@ namespace Vellum
                             NotifyBeforeStop = 60,
                             ArchivePath = "./backups/",
                             BackupsToKeep = 10,
+                            OnActivityOnly = false,
                             BackupOnStartup = true,
                             BackupInterval = 60,
                             PreExec = "",
