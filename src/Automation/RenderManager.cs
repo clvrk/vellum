@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Vellum.Automation
 {
@@ -38,10 +39,23 @@ namespace Vellum.Automation
 
             for (int i = 0; i < RunConfig.Renders.PapyrusTasks.Length; i++)
             {
+                Dictionary<string, string> placeholderReplacements = new Dictionary<string, string>()
+                {
+                    { "$WORLD_PATH", String.Format("\"{0}\"", tempPathCopy) },
+                    { "$OUTPUT_PATH", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath) },
+                    { "${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy) },
+                    { "${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath) }
+                };
+
+                string args = RunConfig.Renders.PapyrusGlobalArgs;
+
+                foreach (KeyValuePair<string, string> kv in placeholderReplacements)
+                    args = args.Replace(kv.Key, kv.Value);
+
                 _renderer = new Process();
                 _renderer.StartInfo.FileName = RunConfig.Renders.PapyrusBinPath;
                 _renderer.StartInfo.WorkingDirectory = Path.GetDirectoryName(RunConfig.Renders.PapyrusBinPath);
-                _renderer.StartInfo.Arguments = $"{RunConfig.Renders.PapyrusGlobalArgs.Replace("${WORLD_PATH}", String.Format("\"{0}\"", tempPathCopy)).Replace("${OUTPUT_PATH}", String.Format("\"{0}\"", RunConfig.Renders.PapyrusOutputPath))} {RunConfig.Renders.PapyrusTasks[i]}";
+                _renderer.StartInfo.Arguments = $"{args} {RunConfig.Renders.PapyrusTasks[i]}";
                 _renderer.StartInfo.RedirectStandardOutput = RunConfig.HideStdout;
                 _renderer.StartInfo.RedirectStandardInput = true;
 

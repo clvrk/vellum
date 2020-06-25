@@ -10,6 +10,7 @@
         public bool HideStdout;
         public bool BusyCommands;
         public bool CheckForUpdates;
+        public bool StopBdsOnException;
     }
 
     public struct BackupConfig

@@ -20,7 +20,6 @@
 **vellum** is a **Minecraft: Bedrock Server** (BDS) backup and map-rendering **automation tool** primarily made to create incremental backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## Table of contents
-- [Table of contents](#table-of-contents)
 - [How does it work?](#how-does-it-work)
 - [Get started](#get-started)
   - [Prerequisites](#prerequisites)
@@ -31,6 +30,7 @@
 - [Parameters & Commands](#parameters--commands)
   - [Parameters](#parameters)
   - [Commands](#commands)
+- [Compiling from source](#compiling-from-source)
 - [Disclaimer](#disclaimer-read-before-using)
 
 ## How does it work?
@@ -42,7 +42,7 @@ Before starting to set up this tool it is recommended to already have a [Bedrock
 If you choose not to go with the self-contained release of this tool, you must have the latest [.NET Core runtime](https://docs.microsoft.com/en-us/dotnet/core/install/linux-package-manager-ubuntu-1804#install-the-net-core-runtime) installed aswell.
 
 ### Installing and configuring
-First of all grab the latest pre-compiled binary from the release-tab or by [**clicking here**](https://github.com/clarkx86/vellum/releases/latest). You will find two releases: A larger self-contained archive which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system.
+First of all grab the latest pre-compiled binary from the release-tab or by [**clicking here**](https://github.com/clarkx86/vellum/releases/latest). You will find three releases, two of them for Linux with a larger self-contained one which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system, as well as one for Windows.
 Download and extract the archive and `cd` into the directory with the extracted files.
 
 You may need to give yourself execution permission with:
@@ -59,7 +59,7 @@ Now you can restart the tool one more time with the same command as above. It sh
 Once the server has launched through this tool you will be able to use the server console and use it's commands just like you normally would.
 
 ### Incremental backups
-To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option to prevent eventually running out of disk space.
+To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option (`-1` to not delete any older archives) to prevent eventually running out of disk space.
 
 ### PapyrusCS integration
 This tool can automatically execute the **PapyrusCS** map-rendering tool on an interval. To do so you have to set `EnableRenders` to `true` and specify an interval in minutes with `RenderInterval`.
@@ -75,66 +75,66 @@ KEY               VALUE               ABOUT
 ----------------------------------------------------------
 REQUIRED SETTINGS
 -----------------
-BdsBinPath        String  (!)         Absolute path to the the Bedrock Server
+BdsBinPath         String  (!)        Absolute path to the the Bedrock Server
                                       executable (similar to "/../../bedrock_server"
                                       on Linux or "/../../bedrock_server.exe" on 
                                       Windows)
 
-WorldName         String  (!)         Name of the world located in the servers
+WorldName          String  (!)        Name of the world located in the servers
                                       /worlds/ directory (specify merely the name and
                                       not the full path)
 ---------------
 BACKUP SETTINGS
 ---------------
-EnableBackups     Boolean (!)         Whether to create world-backups as .zip-archives
+EnableBackups      Boolean (!)        Whether to create world-backups as .zip-archives
 
-BackupInterval    Double              Time in minutes to take a backup and create a
+BackupInterval     Double             Time in minutes to take a backup and create a
                                       .zip-archive
 
-ArchivePath       String              Path where world-backup archives should be
+ArchivePath        String             Path where world-backup archives should be
                                       created
 
-BackupsToKeep     Integer             Amount of backups to keep in the "ArchivePath"-
+BackupsToKeep      Integer            Amount of backups to keep in the "ArchivePath"-
                                       directory, old backups automatically get deleted
 
-StopBeforeBackup  Boolean             Whether to stop, take a backup and then restart
+StopBeforeBackup   Boolean            Whether to stop, take a backup and then restart
                                       the server instead of taking a hot-backup
 
-NotifyBeforeStop  Integer             Time in seconds before stopping the server for a
+NotifyBeforeStop   Integer            Time in seconds before stopping the server for a
                                       backup, players on the server will be
                                       notified with a chat message
 
-BackupOnStartup   Boolean             Whether to create a full backup of the specified
+BackupOnStartup    Boolean            Whether to create a full backup of the specified
                                       world before starting the BDS process
                                       IMPORTANT: It is highly encouraged to leave
                                       this setting on "true"
 
-PreExec           String              An arbitrary command that gets executed before
+PreExec            String             An arbitrary command that gets executed before
                                       each backup starts
 
-PostExec          String              An arbitrary command that gets executed after
+PostExec           String             An arbitrary command that gets executed after
                                       each has finished
 ---------------
 RENDER SETTINGS
 ---------------
-EnableRenders     Boolean (!)         Whether to create an interactive map of the world
+EnableRenders      Boolean (!)        Whether to create an interactive map of the world
                                       using PapyrusCS
 
-PapyrusBinPath    String              Absolute path to the papyrus executable (similar
+PapyrusBinPath     String             Absolute path to the papyrus executable (similar
                                       to "/../../PapyrusCs" on Linux or
                                       "/../../PapyrusCs.exe" on Windows)
 
-PapyrusOutputPath String              Output path for the rendered papyrus map
+PapyrusOutputPath  String             Output path for the rendered papyrus map
 
-RenderInterval    Double              Time in minutes to run a backup and render map
+RenderInterval     Double             Time in minutes to run a backup and render map
 
-PapyrusGlobalArgs String              Global arguments that are present for each
+PapyrusGlobalArgs  String             Global arguments that are present for each
                                       rendering task specified in the "PapyrusArgs"-
                                       array
                                       IMPORTANT: Do not change the already provided
                                       --world and --ouput arguments
 
-PapyrusTasks      String [Array]      An array of additional arguments for papyrus,
+PapyrusTasks       String [Array]     An array of additional arguments for papyrus,
                                       where each array entry executes another
                                       PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
@@ -142,18 +142,23 @@ PapyrusTasks      String [Array]      An array of additional arguments for papyr
 -------------------
 ADDITIONAL SETTINGS
 -------------------
-QuietMode         Boolean (!)         Suppress notifying players in-game that papyrus
+QuietMode          Boolean (!)        Suppress notifying players in-game that vellum
                                       is creating a backup and render
 
-HideStdout        Boolean (!)         Whether to hide the console output generated by
+HideStdout         Boolean (!)        Whether to hide the console output generated by
                                       the PapyrusCS rendering process, setting this
                                       to "true" may help debug your configuration but
                                       will result in a more verbose output
 
-BusyCommands      Boolean (!)         Allow executing BDS commands while the tool is
+BusyCommands       Boolean (!)        Allow executing BDS commands while the tool is
                                       taking backups
 
-CheckForUpdates   Boolean (!)         Whether to check for updates on startup
+CheckForUpdates    Boolean (!)        Whether to check for updates on startup
+
+StopBdsOnException Boolean (!)        Should vellum unexpectedly crash due to an
+                                      unhandled exception, this sets whether to send a 
+                                      "stop" command to the BDS process to prevent it
+                                      from keep running in detached mode otherwise 
 ----------------------------------------------------------
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
@@ -188,6 +193,19 @@ stop <time in seconds>                Schedules a server shutdown and notifies p
 
 reload vellum                         Reloads the previously specified (or default)
                                       configuration file
+
+updatecheck                           Fetches the latest BDS & vellum version and
+                                      displays them in the console
+```
+
+## Compiling from source
+If you want to compile vellum from source instead of using the pre-built binaries, you'll first need to install [.NET Core](https://docs.microsoft.com/en-us/dotnet/core/install/sdk?pivots=os-linux) for your operating system. Clone this repository and `cd` into the `src` directory. Then run the following command to build the vellum executable:
+```
+dotnet build vellum.csproj -c Release /p:OutputType=Exe /p:PublishSingleFile=false
+```
+If you want to build the library instead of the executable, run this command:
+```
+dotnet build vellum.csproj -c Release /p:OutputType=Library
 ```
 
 ## Disclaimer! Read before using!

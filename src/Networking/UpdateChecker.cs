@@ -9,7 +9,8 @@ namespace Vellum.Networking
 {
     internal enum ReleaseProvider
     {
-        GITHUB_RELEASES
+        GITHUB_RELEASES,
+        HTML
     }
 
     internal enum VersionFormatting
@@ -64,6 +65,32 @@ namespace Vellum.Networking
                         result = false;
                     }
                 break;
+
+                case ReleaseProvider.HTML:
+                    HttpWebRequest request = WebRequest.CreateHttp(_apiUrl);
+
+                    try
+                    {
+                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+                        using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                        {
+                            Match match = Regex.Match(reader.ReadToEnd(), _regex);
+                            
+                            if (match.Groups.Count > 1)
+                            {
+                                RemoteVersion = UpdateChecker.ParseVersion(match.Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
+                                result = true;
+                            } else
+                            {
+                                result = false;
+                            }
+                        }
+                    } catch
+                    {
+                        result = false;
+                    }
+                break;
             }
 
             return result;
@@ -94,15 +121,13 @@ namespace Vellum.Networking
         public static Version ParseVersion(string version, VersionFormatting formatting)
         {
             Version formattedVersion = new Version();
-            MatchCollection matches;
+            MatchCollection matches = Regex.Matches(version, @"(\d+)");
 
             bool result = false;
 
             switch (formatting)
             {
                 case VersionFormatting.MAJOR_MINOR_REVISION:
-                    matches = Regex.Matches(version, @"(\d+)\.(\d+)\.(\d+)");
-
                     if (matches.Count == 3)
                     {
                         formattedVersion = new Version(Convert.ToInt32(matches[0].Captures[0].Value), Convert.ToInt32(matches[1].Captures[0].Value), 0, Convert.ToInt32(matches[2].Captures[0].Value));
@@ -111,6 +136,11 @@ namespace Vellum.Networking
                 break;
 
                 case VersionFormatting.MAJOR_MINOR_REVISION_BUILD:
+                    if (matches.Count == 4)
+                    {
+                        formattedVersion = new Version(Convert.ToInt32(matches[0].Captures[0].Value), Convert.ToInt32(matches[1].Captures[0].Value), Convert.ToInt32(matches[3].Captures[0].Value), Convert.ToInt32(matches[2].Captures[0].Value));
+                        result = true;
+                    }
                 break;
 
                 case VersionFormatting.MAJOR_MINOR_BUILD_REVISION:
