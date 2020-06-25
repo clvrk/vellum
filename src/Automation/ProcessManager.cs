@@ -17,6 +17,10 @@ namespace Vellum.Automation
         public bool EnableConsoleOutput { get; set; } = true;
         public delegate void MatchHandler(object sender, MatchedEventArgs e);
         private Dictionary<string, MatchHandler> _matchHandlers = new Dictionary<string, MatchHandler>();
+        private int _failRetryCount;
+        private int _maxFailRetryCount;
+
+        private const int DefaultMaxFailRetryCount = 3;
 
         public bool IsRunning
         {
@@ -37,12 +41,16 @@ namespace Vellum.Automation
         public ProcessManager(ProcessStartInfo startInfo)
         {
             _startInfo = startInfo;
+            _failRetryCount = 0;
             this.Process = new Process();
             this.Process.StartInfo = startInfo;
             this.Process.StartInfo.RedirectStandardInput = true;
             this.Process.StartInfo.RedirectStandardOutput = true;
             this.Process.StartInfo.UseShellExecute = false;
             this.Process.OutputDataReceived += OutputTextReceived;
+            this.Process.EnableRaisingEvents = true;
+            this.Process.Exited += new EventHandler(ProcessExited);
+            RegisterMatchHandler(BdsStrings.ServerStarted, ServerSignaledStarted);
         }
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
@@ -54,6 +62,13 @@ namespace Vellum.Automation
             _ignorePatterns = ignorePatterns;
         }
 
+        public ProcessManager(ProcessStartInfo startInfo, string[] ignorePatterns, bool watchdog)
+            : this(startInfo, ignorePatterns)
+        {
+            this._maxFailRetryCount = watchdog ? DefaultMaxFailRetryCount : 0;
+        }
+        
+
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
         public bool Start()
         {
@@ -61,9 +76,20 @@ namespace Vellum.Automation
             {
                 this.Process.BeginOutputReadLine();
                 return true;
-            } else {
+            }
+            else
+            {
                 return false;
             }
+        }
+
+        ///<summary>Stops process watchdog</summary>
+        public void Stop()
+        {
+            this.Process.Exited -= ProcessExited;
+            this.SendInput("stop");
+            this.Process.WaitForExit();
+            this.Close();
         }
 
         ///<summary>Frees the underlying process.</summary>
@@ -214,6 +240,26 @@ namespace Vellum.Automation
                         Console.WriteLine(e.Data);
                 }
             }
+        }
+
+        private void ProcessExited(object sender, EventArgs e)
+        {
+            Console.WriteLine("BDS process unexpectedly exited");
+            this.Close();
+            if(++this._failRetryCount < this._maxFailRetryCount)
+            {
+                Console.WriteLine("Retry #" + this._failRetryCount + " to start BDS server process");
+                Start();
+            }
+            else if(this._maxFailRetryCount > 0)
+            {
+                Console.WriteLine("Max retry reached!");
+            }
+        }
+
+        private void ServerSignaledStarted(object sender, MatchedEventArgs e)
+        {
+            _failRetryCount = 0;
         }
     }
 

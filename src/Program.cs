@@ -112,7 +112,8 @@ namespace Vellum
                     "^(Data saved. Files are now ready to be copied.)",
                     "^(Changes to the level are resumed.)",
                     "Running AutoCompaction..."
-                });
+                }, 
+                RunConfig.BdsWatchdog);
 
                 // Stop BDS gracefully on unhandled exceptions
                 if (RunConfig.StopBdsOnException)
@@ -123,9 +124,7 @@ namespace Vellum
 
                         if (bds.IsRunning)
                         {
-                            bds.SendInput("stop");
-                            bds.Process.WaitForExit();
-                            bds.Close();
+                            bds.Stop();
                         }
                     };
                 }
@@ -142,7 +141,7 @@ namespace Vellum
                 #endregion
 
                 // Store current BDS version
-                bds.RegisterMatchHandler(@"^.+ Version (\d+\.\d+\.\d+(?>\.\d+)?)", (object sender, MatchedEventArgs e) =>
+                bds.RegisterMatchHandler(BdsStrings.Version, (object sender, MatchedEventArgs e) =>
                 {
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
@@ -155,13 +154,13 @@ namespace Vellum
                     nextBackup = false;
 
                     // Player connect/ disconnect messages
-                    bds.RegisterMatchHandler(@".+Player connected:\s(.+),", (object sender, MatchedEventArgs e) =>
+                    bds.RegisterMatchHandler(BdsStrings.PlayerConnected, (object sender, MatchedEventArgs e) =>
                     {
                         playerCount++;
                         nextBackup = true;
                     });
 
-                    bds.RegisterMatchHandler(@".+Player disconnected:\s(.+),", (object sender, MatchedEventArgs e) =>
+                    bds.RegisterMatchHandler(BdsStrings.PlayerDisconnected, (object sender, MatchedEventArgs e) =>
                     {
                         playerCount--;
                     });
@@ -185,7 +184,7 @@ namespace Vellum
                 if (!bds.IsRunning)
                 {
                     bds.Start();
-                    bds.WaitForMatch(@"^.+ (Server started\.)"); // Wait until BDS successfully started
+                    bds.WaitForMatch(BdsStrings.ServerStarted); // Wait until BDS successfully started
                 }
 
                 // Backup interval
@@ -271,9 +270,7 @@ namespace Vellum
                                     shutdownTimer.AutoReset = false;
                                     shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
                                         // _renderManager.Abort();
-                                        bds.SendInput("stop");
-                                        bds.Process.WaitForExit();
-                                        bds.Close();
+                                        bds.Stop();
                                         _readInput = false;
                                         shutdownTimer.Close();
                                         Console.WriteLine("vellum quit correctly");
@@ -390,7 +387,8 @@ namespace Vellum
                         HideStdout = true,
                         BusyCommands = true,
                         CheckForUpdates = true,
-                        StopBdsOnException = true
+                        StopBdsOnException = true,
+                        BdsWatchdog = true
                     }, Formatting.Indented));
                 }
 
