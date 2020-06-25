@@ -5,3 +5,5 @@ src/obj
 src/backups
 src/temp
 src/configuration.json
+src/configuration_linux.json
+src/configuration_win.json

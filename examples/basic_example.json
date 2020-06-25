@@ -6,6 +6,7 @@
       "BackupInterval": 60.0,
       "ArchivePath": "./backups/",
       "BackupsToKeep": 10,
+      "OnActivityOnly": true,
       "StopBeforeBackup": false,
       "NotifyBeforeStop": 60,
       "BackupOnStartup": true,
@@ -27,5 +28,6 @@
     "QuietMode": false,
     "HideStdout": true,
     "BusyCommands": true,
-    "CheckForUpdates": true
-  }
+    "CheckForUpdates": true,
+    "StopBdsOnException": true
+}

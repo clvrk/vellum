@@ -19,6 +19,7 @@
         public double BackupInterval;
         public string ArchivePath;
         public int BackupsToKeep;
+        public bool OnActivityOnly;
         public bool StopBeforeBackup;
         public uint NotifyBeforeStop;
         public bool BackupOnStartup;
