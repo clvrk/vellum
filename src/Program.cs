@@ -116,8 +116,8 @@ namespace Vellum
                 }, 
                 RunConfig.BdsWatchdog);
 
-                bds.EventServerLaunching += ServerLaunch;
-                bds.EventServerExited += ServerExited;
+                bds.OnServerLaunching += ServerLaunch;
+                bds.OnServerExited += ServerExited;
 
                 // Stop BDS gracefully on unhandled exceptions
                 if (RunConfig.StopBdsOnException)

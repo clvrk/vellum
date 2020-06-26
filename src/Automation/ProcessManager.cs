@@ -16,9 +16,9 @@ namespace Vellum.Automation
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
         public delegate void MatchHandler(object sender, MatchedEventArgs e);
-        public event EventHandler<ServerLaunchingEventArgs> EventServerLaunching;
-        public event EventHandler EventServerStarted;
-        public event EventHandler EventServerExited;
+        public event EventHandler<ServerLaunchingEventArgs> OnServerLaunching;
+        public event EventHandler OnServerStarted;
+        public event EventHandler OnServerExited;
         private Dictionary<string, MatchHandler> _matchHandlers = new Dictionary<string, MatchHandler>();
         private bool _enableWatchdog;
         private uint _failRetryCount;
@@ -87,7 +87,7 @@ namespace Vellum.Automation
                 launchSuccess.LaunchProcessSuccess = true;
             }
 
-            EventServerLaunching?.Invoke(this, launchSuccess);
+            OnServerLaunching?.Invoke(this, launchSuccess);
 
             return launchSuccess.LaunchProcessSuccess;
         }
@@ -256,7 +256,7 @@ namespace Vellum.Automation
 
         private void ProcessExited(object sender, EventArgs e)
         {
-            EventServerExited?.Invoke(this, null);
+            OnServerExited?.Invoke(this, null);
 
             this.Clean();
 
@@ -278,7 +278,7 @@ namespace Vellum.Automation
         private void ServerSignaledStarted(object sender, MatchedEventArgs e)
         {
             _failRetryCount = 0;
-            EventServerStarted?.Invoke(this, null);
+            OnServerStarted?.Invoke(this, null);
         }
     }
 
