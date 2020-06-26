@@ -24,7 +24,7 @@ namespace Vellum.Automation
         private uint _failRetryCount;
         private uint _maxFailRetryCount;
 
-        private const uint DefaultMaxFailRetryCount = 3;
+        private const uint DefaultWatchdogRetryCount = 3;
         private const uint NoWatchdogRetry = 0;
 
         public bool IsRunning
@@ -79,7 +79,7 @@ namespace Vellum.Automation
         {
             ServerLaunchingEventArgs launchSuccess = new ServerLaunchingEventArgs();
 
-            this._maxFailRetryCount = this._enableWatchdog ? DefaultMaxFailRetryCount : NoWatchdogRetry;
+            this._maxFailRetryCount = this._enableWatchdog ? DefaultWatchdogRetryCount : NoWatchdogRetry;
 
             if (this.Process.Start())
             {
