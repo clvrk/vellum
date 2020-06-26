@@ -46,10 +46,7 @@ namespace Vellum.Automation
             // Shutdown server and take full backup
             if (RunConfig.Backups.StopBeforeBackup && _bds.IsRunning)
             {
-                _bds.SendInput("stop");
-                // _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
-                _bds.Process.WaitForExit();
-                _bds.Close();
+                _bds.Stop();
             }
 
             if (fullCopy || RunConfig.Backups.StopBeforeBackup)
