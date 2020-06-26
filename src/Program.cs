@@ -26,6 +26,7 @@ namespace Vellum
         private static Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         private static Version _bdsVersion;
         private static UpdateChecker _updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
+        private static uint playerCount;
 
         static void Main(string[] args)
         {
@@ -115,6 +116,9 @@ namespace Vellum
                 }, 
                 RunConfig.BdsWatchdog);
 
+                bds.EventServerLaunching += ServerLaunch;
+                bds.EventServerExited += ServerExited;
+
                 // Stop BDS gracefully on unhandled exceptions
                 if (RunConfig.StopBdsOnException)
                 {
@@ -146,8 +150,9 @@ namespace Vellum
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
 
+                
+                playerCount = 0;
 
-                uint playerCount = 0;
                 bool nextBackup = true;
                 if (RunConfig.Backups.OnActivityOnly)
                 {
@@ -434,6 +439,16 @@ namespace Vellum
             Console.WriteLine("Done!");
 
             return runConfig;
+        }
+
+        private static void ServerLaunch(object sender, ServerLaunchingEventArgs e)
+        {
+            playerCount = 0;
+        }
+
+        private static void ServerExited(object sender, EventArgs e)
+        {
+            playerCount = 0;
         }
     }
 }
