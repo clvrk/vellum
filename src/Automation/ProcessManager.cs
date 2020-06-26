@@ -7,7 +7,6 @@ namespace Vellum.Automation
 {
     public class ProcessManager
     {
-        public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
         private string _lastMessage = "";
@@ -19,6 +18,7 @@ namespace Vellum.Automation
         public event EventHandler<ServerLaunchingEventArgs> OnServerLaunching;
         public event EventHandler OnServerStarted;
         public event EventHandler OnServerExited;
+        private Process Process { get; set; }
         private Dictionary<string, MatchHandler> _matchHandlers = new Dictionary<string, MatchHandler>();
         private bool _enableWatchdog;
         private uint _failRetryCount;
