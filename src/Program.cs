@@ -384,7 +384,8 @@ namespace Vellum
                                 "--dim 1",
                                 "--dim 2"
                             },
-                            PapyrusOutputPath = ""
+                            PapyrusOutputPath = "",
+                            LowPriority = false
                         },
                         QuietMode = false,
                         HideStdout = true,
