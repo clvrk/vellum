@@ -277,7 +277,6 @@ namespace Vellum
                                         _readInput = false;
                                         shutdownTimer.Close();
                                         Console.WriteLine("vellum quit correctly");
-                                        Environment.Exit(0);
                                     };
 
                                     if (cmd.Count == 2 && !String.IsNullOrWhiteSpace(cmd[1].Captures[0].Value))
