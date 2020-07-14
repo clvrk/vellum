@@ -214,7 +214,7 @@ namespace Vellum
                         {
                             bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.Backups.NotifyBeforeStop));
                         };
-                        backupIntervalTimer.Start();
+                        backupNotificationTimer.Start();
                     }
                 }
 
@@ -228,6 +228,17 @@ namespace Vellum
                         InvokeRender(worldPath, tempWorldPath);
                     };
                     renderIntervalTimer.Start();
+
+                    if (RunConfig.Backups.StopBeforeBackup)
+                    {
+                        System.Timers.Timer renderNotificationTimer = new System.Timers.Timer((RunConfig.Renders.RenderInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Renders.RenderInterval * 60000));
+                        renderNotificationTimer.AutoReset = false;
+                        renderNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                        {
+                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to render the world map.", RunConfig.Backups.NotifyBeforeStop));
+                        };
+                        renderNotificationTimer.Start();
+                    }
                 }
 
                 // Input thread
