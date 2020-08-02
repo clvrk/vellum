@@ -11,6 +11,7 @@
         public bool BusyCommands;
         public bool CheckForUpdates;
         public bool StopBdsOnException;
+        public PluginConfig Plugins;
     }
 
     public struct BackupConfig
@@ -36,5 +37,10 @@
         public string PapyrusGlobalArgs;
         public string[] PapyrusTasks;
 
+    }
+
+    public struct PluginConfig
+    {
+        public bool EnablePlugins;
     }
 }
