@@ -56,15 +56,6 @@ namespace Vellum
             {
                 RunConfig = LoadConfiguration(_configPath);
 
-                #if !DEBUG
-                // Not yet supported due to file permission issues
-                if (!RunConfig.Backups.StopBeforeBackup && System.Environment.OSVersion.Platform == PlatformID.Win32NT)
-                {
-                    Console.WriteLine("NOTICE: Hot-backups are currently not supported on Windows. Please enable \"StopBeforeBackup\" in the \"{0}\" instead.", _configPath);
-                    System.Environment.Exit(0);
-                }
-                #endif
-
                 #region CONDITIONAL UPDATE CHECK
                 if (RunConfig.CheckForUpdates)
                 {
@@ -119,7 +110,7 @@ namespace Vellum
                 {
                     System.AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
                     {
-                        System.Console.WriteLine("Stopping Bedrock server due to an unhandled exception from vellum...");
+                        Console.WriteLine($"Stopping Bedrock server due to an unhandled exception from vellum...\n{e.ExceptionObject.ToString()}");
 
                         if (bds.IsRunning)
                         {
@@ -277,6 +268,7 @@ namespace Vellum
                                         _readInput = false;
                                         shutdownTimer.Close();
                                         Console.WriteLine("vellum quit correctly");
+                                        System.Environment.Exit(0);
                                     };
 
                                     if (cmd.Count == 2 && !String.IsNullOrWhiteSpace(cmd[1].Captures[0].Value))
@@ -363,7 +355,7 @@ namespace Vellum
                         Backups = new BackupConfig()
                         {
                             EnableBackups = true,
-                            StopBeforeBackup = (System.Environment.OSVersion.Platform != PlatformID.Win32NT ? false : true), // Should be reverted to "false" by default when 1.16 releases
+                            StopBeforeBackup = false,
                             NotifyBeforeStop = 60,
                             ArchivePath = "./backups/",
                             BackupsToKeep = 10,

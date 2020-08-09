@@ -120,7 +120,7 @@ namespace Vellum.Automation
                     System.Console.WriteLine("\"{0}\" -> \"{1}\"", filePath, targetPath);
                     */
 
-                    using (FileStream sourceStream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+                    using (FileStream sourceStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     using (FileStream targetStream = File.Open(targetPath, FileMode.Create, FileAccess.Write))
                     {
                         // Console.WriteLine("Copying: {0}", filePath);
