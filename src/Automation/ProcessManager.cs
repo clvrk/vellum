@@ -162,9 +162,10 @@ namespace Vellum.Automation
             if (IsRunning && !Program.RunConfig.QuietMode)
             {
                 #if !IS_LIB
-                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"§l[VELLUM]\"},{\"text\":\"§r " + message + "\"}]}");
+                message = Regex.Replace(message, @"§", "\\u00a7");
+                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"\\u00a7l[VELLUM]\"},{\"text\":\"§r " + message + "\"}]}");
                 #endif
-            }                
+            }
         }
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
