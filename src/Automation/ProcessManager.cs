@@ -163,7 +163,7 @@ namespace Vellum.Automation
             {
                 #if !IS_LIB
                 message = Regex.Replace(message, @"§", "\\u00a7");
-                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"\\u00a7l[VELLUM]\"},{\"text\":\"§r " + message + "\"}]}");
+                SendInput("tellraw @a {\"rawtext\":[{\"text\":\"\\u00a7l[VELLUM]\"},{\"text\":\"\\u00a7r " + message + "\"}]}");
                 #endif
             }
         }
