@@ -14,6 +14,7 @@ namespace Vellum
     class Program
     {
         private static string _configPath = "configuration.json";
+        private const string _serverPropertiesFileName = "server.properties";
         private const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
         private static BackupManager _backupManager;
@@ -56,10 +57,20 @@ namespace Vellum
             {
                 RunConfig = LoadConfiguration(_configPath);
 
+                string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
+                string worldName = "Bedrock level";
+
+                Console.Write($"Reading \"{_serverPropertiesFileName}\"... ");
+
+                using (StreamReader reader = new StreamReader(File.OpenRead(Path.Join(bdsDirPath, _serverPropertiesFileName))))
+                    worldName = Regex.Match(reader.ReadToEnd(), @"^level\-name\=(.+)", RegexOptions.Multiline).Groups[1].Value;
+
+                Console.WriteLine("Done!");
+
                 #region CONDITIONAL UPDATE CHECK
                 if (RunConfig.CheckForUpdates)
                 {
-                    Console.WriteLine("Checking for updates... ");
+                    Console.WriteLine("Checking for updates...");
 
                     if (_updateChecker.GetLatestVersion())
                     {
@@ -80,7 +91,6 @@ namespace Vellum
                     RunConfig.Renders.EnableRenders = false;
                 }
 
-                string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
 
                 #region BDS process and input thread
                 // BDS
@@ -97,7 +107,7 @@ namespace Vellum
                 }
 
                 ProcessManager bds = new ProcessManager(serverStartInfo, new string[] {
-                    "^(" + RunConfig.WorldName.Trim() + @"(?>\/db)?\/\d+\.\w+\:\d+)",
+                    "^(" + worldName.Trim() + @"(?>\/db)?\/)",
                     "^(Saving...)",
                     "^(A previous save has not been completed.)",
                     "^(Data saved. Files are now ready to be copied.)",
@@ -159,18 +169,15 @@ namespace Vellum
                 }
                 
 
-                string worldPath = Path.Join(bdsDirPath, "worlds", RunConfig.WorldName);
-                string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, RunConfig.WorldName);
+                string worldPath = Path.Join(bdsDirPath, "worlds", worldName);
+                string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, worldName);
 
                 _renderManager = new RenderManager(bds, RunConfig);
                 _backupManager = new BackupManager(bds, RunConfig);
 
-                if (RunConfig.Backups.BackupOnStartup)
-                {
-                    // Create initial world backup
-                    Console.WriteLine("Creating initial world backup...");
-                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
-                }
+                // Create initial world backup
+                Console.WriteLine("Creating initial world backup...");
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
 
                 // Start server in case the BackupManager hasn't started it yet
                 if (!bds.IsRunning)
@@ -197,16 +204,18 @@ namespace Vellum
                     };
                     backupIntervalTimer.Start();
 
-                    if (RunConfig.Backups.StopBeforeBackup)
-                    {
-                        System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.Backups.BackupInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Backups.BackupInterval * 60000));
-                        backupNotificationTimer.AutoReset = false;
-                        backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                    bds.RegisterMatchHandler("Starting Server", (object sender, MatchedEventArgs e) => {
+                        if (RunConfig.Backups.StopBeforeBackup)
                         {
-                            bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.Backups.NotifyBeforeStop));
-                        };
-                        backupIntervalTimer.Start();
-                    }
+                            System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.Backups.BackupInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Backups.BackupInterval * 60000));
+                            backupNotificationTimer.AutoReset = false;
+                            backupNotificationTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                            {
+                                bds.SendTellraw(String.Format("Shutting down server in {0} seconds to take a backup.", RunConfig.Backups.NotifyBeforeStop));
+                            };
+                            backupNotificationTimer.Start();
+                        }
+                    });
                 }
 
                 // Render interval
@@ -319,7 +328,7 @@ namespace Vellum
 
                                     // vellum
                                     if (_updateChecker.GetLatestVersion())
-                                            Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
+                                            Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
                                     else
                                             Console.WriteLine("Could not check for vellum updates...");
                                     
@@ -351,7 +360,6 @@ namespace Vellum
                     writer.Write(JsonConvert.SerializeObject(new RunConfiguration()
                     {
                         BdsBinPath = System.Environment.OSVersion.Platform != PlatformID.Win32NT ? "bedrock_server" : "bedrock_server.exe",
-                        WorldName = "Bedrock level",
                         Backups = new BackupConfig()
                         {
                             EnableBackups = true,
@@ -360,7 +368,6 @@ namespace Vellum
                             ArchivePath = "./backups/",
                             BackupsToKeep = 10,
                             OnActivityOnly = false,
-                            BackupOnStartup = true,
                             BackupInterval = 60,
                             PreExec = "",
                             PostExec = "",
@@ -417,7 +424,7 @@ namespace Vellum
 
         private static RunConfiguration LoadConfiguration(string configPath)
         {
-            Console.Write("Loading configuration \"{0}\"... ", configPath);
+            Console.Write($"Loading configuration \"{configPath}\"... ");
 
             RunConfiguration runConfig;
             using (StreamReader reader = new StreamReader(Path.Join(Directory.GetCurrentDirectory(), _configPath)))

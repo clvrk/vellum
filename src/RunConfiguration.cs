@@ -3,7 +3,6 @@
     public struct RunConfiguration
     {
         public string BdsBinPath;
-        public string WorldName;
         public BackupConfig Backups;
         public RenderConfig Renders;
         public bool QuietMode;
@@ -22,7 +21,6 @@
         public bool OnActivityOnly;
         public bool StopBeforeBackup;
         public uint NotifyBeforeStop;
-        public bool BackupOnStartup;
         public string PreExec;
         public string PostExec;
     }
