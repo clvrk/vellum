@@ -139,6 +139,9 @@ PapyrusTasks       String [Array]     An array of additional arguments for papyr
                                       PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
                                       dimensions)
+
+LowPriority        Boolean            Start render process at lowest OS priority
+                                      (Default: false)
 -------------------
 ADDITIONAL SETTINGS
 -------------------

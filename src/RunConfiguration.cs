@@ -33,6 +33,6 @@
         public double RenderInterval;
         public string PapyrusGlobalArgs;
         public string[] PapyrusTasks;
-
+        public bool LowPriority;
     }
 }
