@@ -3,7 +3,6 @@
     public struct RunConfiguration
     {
         public string BdsBinPath;
-        public string WorldName;
         public BackupConfig Backups;
         public RenderConfig Renders;
         public bool QuietMode;
@@ -12,6 +11,7 @@
         public bool CheckForUpdates;
         public bool StopBdsOnException;
         public PluginConfig Plugins;
+        public bool BdsWatchdog;
     }
 
     public struct BackupConfig
@@ -23,7 +23,6 @@
         public bool OnActivityOnly;
         public bool StopBeforeBackup;
         public uint NotifyBeforeStop;
-        public bool BackupOnStartup;
         public string PreExec;
         public string PostExec;
     }
@@ -36,7 +35,7 @@
         public double RenderInterval;
         public string PapyrusGlobalArgs;
         public string[] PapyrusTasks;
-
+        public bool LowPriority;
     }
 
     public struct PluginConfig

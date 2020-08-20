@@ -102,8 +102,23 @@ namespace Vellum.Automation
                 _renderer.StartInfo.RedirectStandardInput = true;
 
                 Log(String.Format("{0}{1}Rendering map {2}/{3}...", _tag, _indent, i + 1, RunConfig.Renders.PapyrusTasks.Length));
+                
+                // To pre-emptively start a process with defined priority you need to set calling process to said priority.
+                Process parentProcess = Process.GetCurrentProcess();
+                ProcessPriorityClass parentPriority = parentProcess.PriorityClass;
+                if(RunConfig.Renders.LowPriority)
+                {
+                    parentProcess.PriorityClass = ProcessPriorityClass.Idle;
+                }
 
                 _renderer.Start();
+
+                if(RunConfig.Renders.LowPriority)
+                {
+                    // Set back parent process to original priority
+                    parentProcess.PriorityClass = parentPriority;
+                }
+                
                 _renderer.WaitForExit();
             }
 

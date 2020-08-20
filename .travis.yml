@@ -8,6 +8,7 @@ env:
     - REPO_OWNER=$(echo $TRAVIS_BUILD_DIR | sed -r 's/\/.+//g')
   jobs:
     - RUNTIME=win-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=false
+    - RUNTIME=win-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=true
     - RUNTIME=linux-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=false
     - RUNTIME=linux-x64 OUTPUT_TYPE=Exe SELF_CONTAINED=true
 before-install:

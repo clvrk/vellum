@@ -2,7 +2,7 @@
   <div>
     <b>Quick links:</b>
     <br>
-    <a href="https://github.com/clarkx86/vellum/relealatest">Download</a><b> | </b><a href="https://gitcom/clarkx86/vellum/tree/master/docs">Documentatia><b> | </b><a href="https://discordJ2sBaXa">Discord</a>
+    <a href="https://github.com/clarkx86/vellum/releases/latest">Download</a><b> | </b><a href="https://github.com/clarkx86/vellum/tree/master/docs">Documentation</a><b> | </b><a href="https://discord.gg/J2sBaXa">Discord</a>
   </div>
   <hr>
   <img alt="vellum" src="https://papyrus.clarkx86.com/wp-content/uploads/sites/2/2020/06/vellum_logo.png">
@@ -17,7 +17,6 @@
 **vellum** is a **Minecraft: Bedrock Server** (BDS) **automation tool** primarily made to create incremental (hot-)backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## Table of contents
-- [Table of contents](#table-of-contents)
 - [Get started](#get-started)
   - [Prerequisites](#prerequisites)
   - [Installing and configuring](#installing-and-configuring)
@@ -38,10 +37,10 @@ Before starting to setting up this tool it is recommended to already have a [Bed
 If you choose not to go with the self-contained release of this tool, you must have the latest [.NET Core runtime](https://docs.microsoft.com/en-us/dotnet/core/install/linux-package-manager-ubuntu-1804#install-the-net-core-runtime) installed aswell.
 
 ### Installing and configuring
-First of all grab the latest pre-compiled binary from the release-tab or by [**clicking here**](https://github.com/clarkx86/vellum/releases/latest) (or [compile from source](#compiling-from-source)). You will find three releases, two of them for Linux with a larger self-contained one which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system, as well as a release for Windows.
+First of all grab the latest pre-compiled binary from the [**releases page**](https://github.com/clarkx86/vellum/releases/latest) (or [compile from source](#compiling-from-source)). You will find three releases, two of them for Linux with a larger self-contained one which comes bundled with the .NET Core runtime and a smaller archive which depends on you having the .NET Core runtime already installed on your system, as well as a release for Windows.
 Download and extract the archive and `cd` into the directory with the extracted files.
 
-You may need to give yourself execution permissions with:
+On Linux, you may need to give yourself execution permissions with:
 ```bash
 chmod +x ./vellum
 ```
@@ -51,8 +50,8 @@ Now run this tool for the first time by typing:
 ```
 This will generate a new `configuration.json` in the directory relative to the vellum executable and then exit. Edit this file and specify at least all required parameters ([see below for an overview](https://github.com/clarkx86/vellum#configuration)).
 
-Now you can restart the tool once again with the same command as above. It should now spawn the BDS instance for you and perform backups on the specified interval (do not start the server manually).
-Once the server has launched through this tool you will be able to use the server console and use its commands just like you normally would.
+Now you can restart vellum once again with the same command as above. It should now spawn the BDS instance for you and perform backups on the specified interval (do not start the server manually).
+Once the server has launched through this tool you will be able to use the server console and its commands just like you normally would.
 
 ### Incremental backups
 To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option (`-1` to not delete any older archives) to prevent eventually running out of disk space.
@@ -154,6 +153,9 @@ PapyrusTasks       String [Array]     An array of additional arguments for papyr
                                       PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
                                       dimensions)
+
+LowPriority        Boolean            Start render process at lowest OS priority
+                                      (Default: false)
 -------------------
 ADDITIONAL SETTINGS
 -------------------
@@ -174,6 +176,11 @@ StopBdsOnException Boolean (!)        Should vellum unexpectedly crash due to an
                                       unhandled exception, this sets whether to send a 
                                       "stop" command to the BDS process to prevent it
                                       from keep running in detached mode otherwise 
+
+BdsWatchdog        Boolean (!)        Monitor BDS process and restart if unexpectedly
+                                      exited. Will try to restart process a maximum of 
+                                      3 times. This retry count is reset when BDS
+                                      instance is deemed stable.
 ----------------------------------------------------------
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```

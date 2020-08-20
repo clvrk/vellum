@@ -99,10 +99,7 @@ namespace Vellum.Automation
             // Shutdown server and take full backup
             if (RunConfig.Backups.StopBeforeBackup && _bds.IsRunning)
             {
-                _bds.SendInput("stop");
-                // _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
-                _bds.Process.WaitForExit();
-                _bds.Close();
+                _bds.Stop();
             }
 
             if (fullCopy || RunConfig.Backups.StopBeforeBackup)
@@ -138,7 +135,7 @@ namespace Vellum.Automation
                 CallHook(Hook.SAVE_HOLD);
 
                 _bds.SendInput("save hold");
-                _bds.SetMatchPattern("^(" + Path.GetFileName(worldPath) + @"[\/]{1})");
+                _bds.SetMatchPattern("(" + Path.GetFileName(worldPath) + @"\/)");
 
                 while (!_bds.HasMatched)
                 {
@@ -146,7 +143,7 @@ namespace Vellum.Automation
                     Thread.Sleep(QueryTimeout);
                 }
 
-                Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"[\/]{1}.+?)\:{1}(\d+)");
+                Regex fileListRegex = new Regex("(" + Path.GetFileName(worldPath) + @"\/.+?)\:{1}(\d+)");
                 MatchCollection matches = fileListRegex.Matches(_bds.GetMatchedText());
 
                 string[,] sourceFiles = new string[matches.Count, 2];
@@ -175,7 +172,7 @@ namespace Vellum.Automation
                     System.Console.WriteLine("\"{0}\" -> \"{1}\"", filePath, targetPath);
                     */
 
-                    using (FileStream sourceStream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+                    using (FileStream sourceStream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     using (FileStream targetStream = File.Open(targetPath, FileMode.Create, FileAccess.Write))
                     {
                         // Console.WriteLine("Copying: {0}", filePath);
@@ -192,7 +189,7 @@ namespace Vellum.Automation
 
                 #region FILE INTEGRITY CHECK
 
-                Log(String.Format("{0}{1}Veryfing file-integrity... ", _tag, _indent));
+                Log(String.Format("{0}{1}Verifying file-integrity... ", _tag, _indent));
 
                 string[] sourceDbFiles = Directory.GetFiles(worldPath + "/db/");
                 string[] targetDbFiles = Directory.GetFiles(destinationPath + "/db/");
