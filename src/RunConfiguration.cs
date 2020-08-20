@@ -10,6 +10,7 @@
         public bool BusyCommands;
         public bool CheckForUpdates;
         public bool StopBdsOnException;
+        public PluginConfig Plugins;
         public bool BdsWatchdog;
     }
 
@@ -35,5 +36,10 @@
         public string PapyrusGlobalArgs;
         public string[] PapyrusTasks;
         public bool LowPriority;
+    }
+
+    public struct PluginConfig
+    {
+        public bool EnablePlugins;
     }
 }

@@ -1,18 +1,69 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Vellum.Extension;
 
 namespace Vellum.Automation
 {
 
-    public class BackupManager : Manager
+    public class BackupManager : Manager, IPlugin
     {
         private ProcessManager _bds;
         public RunConfiguration RunConfig;
         ///<summary>Time in milliseconds to wait until sending next <code>save query</code> command to <code>ProcessManager</code>'s process</summary>
         public int QueryTimeout { get; set; } = 500;
+
+        #region PLUGIN
+        public IHost Host;
+        public Version Version { get; }
+        public PluginType PluginType { get { return PluginType.INTERNAL; } }
+        private Dictionary<byte, IPlugin.HookHandler> _hookCallbacks = new Dictionary<byte, IPlugin.HookHandler>();
+        public enum Hook
+        {
+            BEGIN,
+            SAVE_HOLD,
+            SAVE_RESUME,
+            COPY,
+            COPY_END,
+            INTEGRITY,
+            INTEGRITY_END,
+            ARCHIVE,
+            END
+        }
+
+        public void Initialize(IHost host)
+        {
+            Host = host;
+        }
+
+        public void Unload()
+        {
+        }
+
+        public Dictionary<byte, string> GetHooks()
+        {
+            Dictionary<byte, string> hooks = new Dictionary<byte, string>();
+
+            foreach (byte hookId in Enum.GetValues(typeof(Hook)))
+                hooks.Add(hookId, Enum.GetName(typeof(Hook), hookId));
+
+            return hooks;
+        }
+
+        public void RegisterHook(byte id, IPlugin.HookHandler callback)
+        {
+            _hookCallbacks[id] += callback;
+        }
+
+        private void CallHook(Hook hook, EventArgs e = null)
+        {
+            if (_hookCallbacks.ContainsKey((byte)hook))
+                _hookCallbacks[(byte)hook]?.Invoke(this, e);
+        }
+        #endregion
 
         public BackupManager(ProcessManager p, RunConfiguration runConfig)
         {
@@ -30,6 +81,8 @@ namespace Vellum.Automation
         public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
         {
             Processing = true;
+
+            CallHook(Hook.BEGIN);
 
             #region PRE EXEC
             if (!string.IsNullOrWhiteSpace(RunConfig.Backups.PreExec))
@@ -78,6 +131,8 @@ namespace Vellum.Automation
             else
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
+
+                CallHook(Hook.SAVE_HOLD);
 
                 _bds.SendInput("save hold");
                 _bds.SetMatchPattern("(" + Path.GetFileName(worldPath) + @"\/)");
@@ -163,6 +218,8 @@ namespace Vellum.Automation
 
                 Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
+                CallHook(Hook.SAVE_RESUME);
+
                 _bds.SendInput("save resume");
                 _bds.WaitForMatch("^(Changes to the level are resumed.)");
             }
@@ -172,6 +229,8 @@ namespace Vellum.Automation
             // Archive
             if (archive)
             {
+                CallHook(Hook.ARCHIVE);
+
                 Log(String.Format("{0}{1}Archiving world backup...", _tag, _indent));
                 if (Archive(destinationPath, RunConfig.Backups.ArchivePath, RunConfig.Backups.BackupsToKeep))
                 {
@@ -203,6 +262,8 @@ namespace Vellum.Automation
                 ProcessManager.RunCustomCommand(RunConfig.Backups.PostExec);
             }
             #endregion
+
+            CallHook(Hook.END);
 
             Processing = false;
         }
@@ -271,6 +332,14 @@ namespace Vellum.Automation
             }
 
             return result;
+        }
+
+        ///<summary>Restores an archived backup.</summary>
+        public static bool Restore(string archivePath, string destinationPath)
+        {
+            
+
+            return true;
         }
 
         ///<summary>Copies an existing directory.</summary>

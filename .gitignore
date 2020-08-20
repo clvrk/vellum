@@ -1,8 +1,17 @@
 # Project specific
-.vscode
+.vscode/
+bin/
+obj/
+backups/
+plugins/
+temp/
+configuration.json
+configuration_linux.json
+configuration_win.json
 src/bin
 src/obj
 src/backups
+src/plugins
 src/temp
 src/configuration.json
 src/configuration_linux.json
