@@ -2,12 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Newtonsoft.Json.Linq;
 
 namespace Vellum.Extension
 {
-    public class Host : IHost
+    public class Host : InternalPlugin, IHost
     {
-        public static RunConfiguration RunConfig;
+        public RunConfiguration RunConfig { get; private set; }
         // Plugin host interface
         public Version Version
         {
@@ -17,18 +18,25 @@ namespace Vellum.Extension
             }
         }
         private List<IPlugin> _activePlugins = new List<IPlugin>();
+        private string _pluginDir;
+        public string PluginDirectory { get { return _pluginDir; } }
 
         public Host(ref RunConfiguration runConfig)
         {
             RunConfig = runConfig;
         }
 
-        public uint LoadPlugins(string dir)
+        public void SetPluginDirectory(string directory)
+        {
+            _pluginDir = directory;
+        }
+
+        public uint LoadPlugins()
         {
             uint pluginCount = 0;
-            foreach (string pluginPath in Directory.GetFiles(dir, "*.dll"))
+            foreach (string pluginPath in Directory.GetFiles(_pluginDir, "*.dll", SearchOption.AllDirectories))
             {
-                System.Console.WriteLine("Loading plugin(s) from \"{0}\"...", pluginPath);
+                // System.Console.WriteLine("Loading plugin(s) from \"{0}\"...", pluginPath);
                 Assembly pluginAssembly = Assembly.LoadFrom(pluginPath);
                 foreach (Type type in pluginAssembly.GetTypes())
                 {
@@ -39,7 +47,7 @@ namespace Vellum.Extension
                             RunConfig.Plugins.Add(type.Name, new PluginConfig()
                             {
                                 Enable = true,
-                                Config = (Dictionary<string, object>)type.GetMethod("GetDefaultRunConfig", BindingFlags.Public | BindingFlags.Static).Invoke(null, null)
+                                Config = type.GetMethod("GetDefaultRunConfiguration", BindingFlags.Public | BindingFlags.Static).Invoke(null, null)
                             });
                         }
 
@@ -86,6 +94,11 @@ namespace Vellum.Extension
             }
 
             return plugin;
+        }
+
+        public T LoadPluginConfiguration<T>(Type type)
+        {
+           return ((JObject)RunConfig.Plugins[type.Name].Config).ToObject<T>();
         }
     }
 }

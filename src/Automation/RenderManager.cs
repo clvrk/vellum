@@ -6,50 +6,20 @@ using Vellum.Extension;
 
 namespace Vellum.Automation
 {
-    public class RenderManager : Manager, IPlugin
+    public class RenderManager : Manager
     {
         private ProcessManager _bds;
         private Process _renderer;
         public RunConfiguration RunConfig;
 
         #region PLUGIN
-        public IHost Host;
         public Version Version { get; }
-        public PluginType PluginType { get { return PluginType.INTERNAL; } }
-        private Dictionary<byte, IPlugin.HookHandler> _hookCallbacks = new Dictionary<byte, IPlugin.HookHandler>();
         public enum Hook
         {
             BEGIN,
+            ABORT,
+            NEXT,
             END
-        }
-
-        public void Initialize(IHost host)
-        {
-            Host = host;
-        }
-
-        public void Unload()
-        {
-        }
-
-        public Dictionary<byte, string> GetHooks()
-        {
-            Dictionary<byte, string> hooks = new Dictionary<byte, string>();
-
-            foreach (byte hookId in Enum.GetValues(typeof(Hook)))
-                hooks.Add(hookId, Enum.GetName(typeof(Hook), hookId));
-
-            return hooks;
-        }
-
-        public void RegisterHook(byte id, IPlugin.HookHandler callback)
-        {
-            _hookCallbacks[id] += callback;
-        }
-
-        private void CallHook(Hook hook, EventArgs e = null)
-        {
-            _hookCallbacks[(byte)hook]?.Invoke(this, e);
         }
         #endregion
 
@@ -67,6 +37,8 @@ namespace Vellum.Automation
             _bds.SendTellraw("Rendering map...");
 
             Log(String.Format("{0}Initializing map rendering...", _tag));
+
+            CallHook((byte)Hook.BEGIN);
 
             // Create temporary copy of latest backup to initiate render on
             string prfx = "_";
@@ -113,6 +85,8 @@ namespace Vellum.Automation
 
                 _renderer.Start();
 
+                CallHook((byte)Hook.NEXT, new HookEventArgs() { Attachment = i });
+
                 if(RunConfig.Renders.LowPriority)
                 {
                     // Set back parent process to original priority
@@ -131,6 +105,8 @@ namespace Vellum.Automation
             // Send tellraw message 2/2
             _bds.SendTellraw("Done rendering!");
 
+            CallHook((byte)Hook.END);
+
             Processing = false;
         }
 
@@ -144,6 +120,8 @@ namespace Vellum.Automation
             } else {
                 result = false;
             }
+
+            CallHook((byte)Hook.ABORT, new HookEventArgs() { Attachment = result });
 
             return result;
         }

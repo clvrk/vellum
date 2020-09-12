@@ -41,6 +41,6 @@
     public struct PluginConfig
     {
         public bool Enable;
-        public System.Collections.Generic.Dictionary<string, object> Config;
+        public object Config;
     }
 }

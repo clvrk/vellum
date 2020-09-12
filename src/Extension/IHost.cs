@@ -6,9 +6,11 @@ namespace Vellum.Extension
     public interface IHost
     {
         public Version Version { get; }
-        
-        public static RunConfiguration RunConfig { get; }
-        public uint LoadPlugins(string dir);
+        public RunConfiguration RunConfig { get; }
+        public T LoadPluginConfiguration<T>(Type type);
+        public string PluginDirectory { get; }
+        public void SetPluginDirectory(string dir);
+        public uint LoadPlugins();
         public void AddPlugin(IPlugin plugin);
         public List<IPlugin> GetPlugins();
         public IPlugin GetPluginByName(string name);

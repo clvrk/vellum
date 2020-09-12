@@ -8,7 +8,6 @@ namespace Vellum.Extension
         // public Version Version { get; }
         public PluginType PluginType { get; }
         public delegate void HookHandler(object sender, EventArgs e);
-
         public void Initialize(IHost host);
         public void Unload();
         public void RegisterHook(byte id, HookHandler callback);
@@ -20,5 +19,10 @@ namespace Vellum.Extension
     {
         INTERNAL,
         EXTERNAL
+    }
+
+    public class HookEventArgs : EventArgs
+    {
+        public object Attachment = null;
     }
 }

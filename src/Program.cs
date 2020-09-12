@@ -15,7 +15,7 @@ using Vellum.Extension;
 
 namespace Vellum
 {
-    public class Program
+    public class VellumHost
     {
         private const string _serverPropertiesFileName = "server.properties";
         private const string _tempPath = "temp/";
@@ -217,8 +217,10 @@ namespace Vellum
                 if (Directory.Exists(pluginDirectory))
                 {
                     Host host = new Host(ref RunConfig);
+                    host.SetPluginDirectory(pluginDirectory);
 
                     #region INTERNAL PLUGINS
+                    host.AddPlugin(bds);
                     host.AddPlugin(_backupManager);
                     host.AddPlugin(_renderManager);
 
@@ -226,14 +228,19 @@ namespace Vellum
                         host.AddPlugin(_bdsWatchdog);
                     #endregion
                     
-                    if (host.LoadPlugins(pluginDirectory) > 0)
+                    if (host.LoadPlugins() > 0)
                     {
                         foreach (IPlugin plugin in host.GetPlugins())
                         {
                             if (plugin.PluginType == PluginType.EXTERNAL)
                                 Console.WriteLine($"Loaded plugin \"{plugin.GetType().Name} v{UpdateChecker.ParseVersion(System.Reflection.Assembly.GetAssembly(plugin.GetType()).GetName().Version, VersionFormatting.MAJOR_MINOR_REVISION)}\"");
                         }
+
+                        Console.WriteLine();
                     }
+                } else
+                {
+                    Directory.CreateDirectory(pluginDirectory);
                 }
                 #endregion
 
@@ -477,7 +484,7 @@ namespace Vellum
             }
             else
             {
-                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A backup task is still running."); }
+                if (!RunConfig.QuietMode) { Console.WriteLine("A backup task is still running."); }
             }
         }
 
@@ -490,7 +497,7 @@ namespace Vellum
             }
             else
             {
-                if (!Program.RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
+                if (!RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
             }
         }
 
@@ -521,6 +528,9 @@ namespace Vellum
             {
                 byte[] sourceHash = md5.ComputeHash(File.ReadAllBytes(Path.Join(Directory.GetCurrentDirectory(), configPath)));
                 byte[] targetHash = md5.ComputeHash(Encoding.ASCII.GetBytes(runConfigJson));
+
+                //System.Console.WriteLine(Convert.ToBase64String(sourceHash));
+                //System.Console.WriteLine(Convert.ToBase64String(targetHash));
 
                 if (Convert.ToBase64String(sourceHash) != Convert.ToBase64String(targetHash))
                 {
