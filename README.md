@@ -17,6 +17,7 @@
 **vellum** is a **Minecraft: Bedrock Server** (BDS) **automation tool** primarily made to create incremental (hot-)backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## Table of contents
+- [Table of contents](#table-of-contents)
 - [Get started](#get-started)
   - [Prerequisites](#prerequisites)
   - [Installing and configuring](#installing-and-configuring)
@@ -244,6 +245,8 @@ PARAMETER                             ABOUT
 --no-start                            In conjunction with the --restore flag, this tells the
                                       application to not start the server after successfully
                                       restoring a backup.
+
+--no-backup-on-startup                Disables the initial temporary backup on startup.
 ```
 Parameters are optional and will default to their default values if not specified.
 

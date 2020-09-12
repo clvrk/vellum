@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
@@ -15,7 +17,6 @@ namespace Vellum
 {
     public class Program
     {
-        private static string _configPath = "configuration.json";
         private const string _serverPropertiesFileName = "server.properties";
         private const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
@@ -24,15 +25,15 @@ namespace Vellum
         public bool IsReady { get; private set; } = false;
         private static BackupManager _backupManager;
         private static RenderManager _renderManager;
+        private static Watchdog _bdsWatchdog;
 
         private static UpdateChecker _updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
         private static uint playerCount;
 
         static void Main(string[] args)
         {
-            string _configPath = "configuration.json";
-            string _pluginDirectory = "plugins/";
-            string _tempPath = "temp/";
+            string configPath = "configuration.json";
+            string pluginDirectory = "plugins/";
 
             Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             Version _bdsVersion = new Version();
@@ -46,18 +47,20 @@ namespace Vellum
             debugTag = " DEBUG";
             #endif
 
-            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86 & DeepBlue\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + debugTag, _localVersion.Build, new string(' ', 7));
+            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86, DeepBlue & contributors\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + debugTag, _localVersion.Build, new string(' ', 7));
 
             bool printHelp = false;
             bool noStart = false;
             string restorePath = null;
+            bool backupOnStartup = true;
 
             OptionSet options = new OptionSet() {
                 { "h|help", "Displays a help screen.", v => { printHelp = v != null; } },
-                { "c=|configuration=", "The configuration file to load settings from.", v => { if (!String.IsNullOrWhiteSpace(v)) _configPath = v.Trim(); } },
-                { "p=|plugin-directory=", "The directory to scan for plugins.", v => { if (!String.IsNullOrWhiteSpace(v)) _pluginDirectory = v; } },
+                { "c=|configuration=", "The configuration file to load settings from.", v => { if (!String.IsNullOrWhiteSpace(v)) configPath = v.Trim(); } },
+                { "p=|plugin-directory=", "The directory to scan for plugins.", v => { if (!String.IsNullOrWhiteSpace(v)) pluginDirectory = v; } },
                 { "r=|restore=", "Path to an archive to restore a backup from.", v => { if (!String.IsNullOrWhiteSpace(v)) restorePath = v; } },
-                { "no-start", "In conjunction with the --restore flag, this tells the application to not start the server after successfully restoring a backup.", v => { noStart = v != null; } }
+                { "no-start", "In conjunction with the --restore flag, this tells the application to not start the server after successfully restoring a backup.", v => { noStart = v != null; } },
+                { "no-backup-on-startup", "Disables the initial temporary backup on startup.", v => { backupOnStartup = v == null; } }
             };
             System.Collections.Generic.List<string> extraOptions = options.Parse(args);
 
@@ -68,10 +71,10 @@ namespace Vellum
                 System.Environment.Exit(0);
             }
             
-            if (File.Exists(_configPath))
+            if (File.Exists(configPath))
             {
                 // Load configuration
-                RunConfig = LoadConfiguration(_configPath);
+                RunConfig = LoadConfiguration(configPath);
               
                 string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
                 string worldName = "Bedrock level";
@@ -121,8 +124,6 @@ namespace Vellum
 
 
                 #region BDS process and input thread
-                string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
-
                 ProcessStartInfo serverStartInfo = new ProcessStartInfo()
                 {
                     FileName = RunConfig.BdsBinPath,
@@ -142,22 +143,31 @@ namespace Vellum
                     "^(Data saved. Files are now ready to be copied.)",
                     "^(Changes to the level are resumed.)",
                     "Running AutoCompaction..."
-                }, 
-                RunConfig.BdsWatchdog);
+                });
 
-                bds.OnServerLaunching += ServerLaunch;
-                bds.OnServerExited += ServerExited;
+                if (RunConfig.BdsWatchdog)
+                {
+                    _bdsWatchdog = new Watchdog(bds);
+
+                    _bdsWatchdog.RegisterHook((byte)Watchdog.Hook.LIMIT_REACHED, (object sender, EventArgs e) => 
+                    {
+                        SaveConfiguration(RunConfig, configPath);
+                        System.Environment.Exit(1);
+                    });
+                }
 
                 // Stop BDS gracefully on unhandled exceptions
                 if (RunConfig.StopBdsOnException)
                 {
                     System.AppDomain.CurrentDomain.UnhandledException += (object sender, UnhandledExceptionEventArgs e) =>
                     {
-                        Console.WriteLine($"Stopping Bedrock server due to an unhandled exception from vellum...\n{e.ExceptionObject.ToString()}");
+                        Console.WriteLine($"Stopping BDS due to an unhandled exception from vellum...\n{e.ExceptionObject.ToString()}");
 
                         if (bds.IsRunning)
                         {
-                            bds.Stop();
+                            bds.SendInput("stop");
+                            bds.Process.WaitForExit();
+                            bds.Close();
                         }
                     };
                 }
@@ -166,14 +176,12 @@ namespace Vellum
                 _ioThread = new Thread(() =>
                 {
                     while (_readInput)
-                    {
                         inStream?.Invoke(Console.ReadLine());
-                    }
                 });
                 _ioThread.Start();
 
                 // Store current BDS version
-                bds.RegisterMatchHandler(BdsStrings.Version, (object sender, MatchedEventArgs e) =>
+                bds.RegisterMatchHandler(CommonRegex.Version, (object sender, MatchedEventArgs e) =>
                 {
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
@@ -186,13 +194,13 @@ namespace Vellum
                     nextBackup = false;
 
                     // Player connect/ disconnect messages
-                    bds.RegisterMatchHandler(BdsStrings.PlayerConnected, (object sender, MatchedEventArgs e) =>
+                    bds.RegisterMatchHandler(CommonRegex.PlayerConnected, (object sender, MatchedEventArgs e) =>
                     {
                         playerCount++;
                         nextBackup = true;
                     });
 
-                    bds.RegisterMatchHandler(BdsStrings.PlayerDisconnected, (object sender, MatchedEventArgs e) =>
+                    bds.RegisterMatchHandler(CommonRegex.PlayerDisconnected, (object sender, MatchedEventArgs e) =>
                     {
                         playerCount--;
                     });
@@ -206,14 +214,19 @@ namespace Vellum
                 _backupManager = new BackupManager(bds, RunConfig);
 
                 #region PLUGIN LOADING
-                if (Directory.Exists(_pluginDirectory))
+                if (Directory.Exists(pluginDirectory))
                 {
-                    Host host = new Host(RunConfig);
+                    Host host = new Host(ref RunConfig);
 
+                    #region INTERNAL PLUGINS
                     host.AddPlugin(_backupManager);
                     host.AddPlugin(_renderManager);
+
+                    if (RunConfig.BdsWatchdog)
+                        host.AddPlugin(_bdsWatchdog);
+                    #endregion
                     
-                    if (host.LoadPlugins(_pluginDirectory) > 0)
+                    if (host.LoadPlugins(pluginDirectory) > 0)
                     {
                         foreach (IPlugin plugin in host.GetPlugins())
                         {
@@ -223,20 +236,6 @@ namespace Vellum
                     }
                 }
                 #endregion
-
-                if (RunConfig.Backups.BackupOnStartup)
-                {
-                    // Create initial world backup
-                    Console.WriteLine("Creating initial world backup...");
-                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
-                }
-
-                // Start server in case the BackupManager hasn't started it yet
-                if (!bds.IsRunning)
-                {
-                    bds.Start();
-                    bds.WaitForMatch(BdsStrings.ServerStarted); // Wait until BDS successfully started
-                }
 
                 // Backup interval
                 if (RunConfig.Backups.EnableBackups)
@@ -257,6 +256,7 @@ namespace Vellum
                     backupIntervalTimer.Start();
 
                     bds.RegisterMatchHandler("Starting Server", (object sender, MatchedEventArgs e) => {
+                    // bds.RegisterMatchHandler(CommonRegex.ServerStarted, (object sender, MatchedEventArgs e) => {
                         if (RunConfig.Backups.StopBeforeBackup)
                         {
                             System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.Backups.BackupInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Backups.BackupInterval * 60000));
@@ -280,6 +280,20 @@ namespace Vellum
                         InvokeRender(worldPath, tempWorldPath);
                     };
                     renderIntervalTimer.Start();
+                }
+
+                if (backupOnStartup)
+                {
+                    // Create initial world backup
+                    Console.WriteLine("Creating initial temporary copy of world directory...");
+                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
+                }
+
+                // Start server in case the BackupManager hasn't started it yet
+                if (!bds.IsRunning)
+                {
+                    bds.Start();
+                    bds.WaitForMatch(CommonRegex.ServerStarted); // Wait until BDS successfully started
                 }
 
                 // Input thread
@@ -323,9 +337,14 @@ namespace Vellum
                                     shutdownTimer.AutoReset = false;
                                     shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
                                         // _renderManager.Abort();
-                                        bds.Stop();
+                                        bds.SendInput("stop");
+                                        bds.Process.WaitForExit();
+                                        bds.Close();
                                         _readInput = false;
                                         shutdownTimer.Close();
+
+                                        SaveConfiguration(RunConfig, configPath);
+
                                         Console.WriteLine("vellum quit correctly");
                                         System.Environment.Exit(0);
                                     };
@@ -358,7 +377,7 @@ namespace Vellum
                                 case "reload":
                                     if (cmd.Count == 2 && cmd[1].Captures[0].Value == "vellum")
                                     {
-                                        RunConfig = LoadConfiguration(_configPath);
+                                        RunConfig = LoadConfiguration(configPath);
                                     } else
                                     {
                                         bds.SendInput(text);
@@ -397,7 +416,7 @@ namespace Vellum
                     }
                     else
                     {
-                        Console.WriteLine("Could not execute vellum command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, _configPath);
+                        Console.WriteLine("Could not execute vellum command \"{0}\". Please wait until all tasks have finished or enable \"BusyCommands\" in your \"{1}\".", text, configPath);
                     }
                 };
             }
@@ -405,7 +424,7 @@ namespace Vellum
             {
                 Console.WriteLine("No previous configuration file found. Creating one...");
 
-                using (StreamWriter writer = new StreamWriter(_configPath))
+                using (StreamWriter writer = new StreamWriter(configPath))
                 {
                     writer.Write(JsonConvert.SerializeObject(new RunConfiguration()
                     {
@@ -442,14 +461,11 @@ namespace Vellum
                         CheckForUpdates = true,
                         StopBdsOnException = true,
                         BdsWatchdog = true,
-
-                        Plugins = new PluginConfig() {
-                            EnablePlugins = true
-                        }
-                    }, Formatting.Indented));
+                        Plugins = new Dictionary<string, PluginConfig>() },
+                        Formatting.Indented));
                 }
 
-                Console.WriteLine(String.Format("Done! Please edit the \"{0}\" file and restart this application.", _configPath));
+                Console.WriteLine(String.Format("Done! Please edit the \"{0}\" file and restart this application.", configPath));
             }
         }
 
@@ -493,14 +509,37 @@ namespace Vellum
             return runConfig;
         }
 
-        private static void ServerLaunch(object sender, ServerLaunchingEventArgs e)
+        private static void SaveConfiguration(RunConfiguration runConfig, string configPath)
         {
-            playerCount = 0;
-        }
+            // In case of new plugins added by the user, plugin-specific run configuration entries
+            // may have been added to its respective sub-section in the "Plugins"-key.
+            // This means the current RunConfig has to be serialized once again.
 
-        private static void ServerExited(object sender, EventArgs e)
-        {
-            playerCount = 0;
+            string runConfigJson = JsonConvert.SerializeObject(runConfig, Formatting.Indented);
+
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] sourceHash = md5.ComputeHash(File.ReadAllBytes(Path.Join(Directory.GetCurrentDirectory(), configPath)));
+                byte[] targetHash = md5.ComputeHash(Encoding.ASCII.GetBytes(runConfigJson));
+
+                if (Convert.ToBase64String(sourceHash) != Convert.ToBase64String(targetHash))
+                {
+                    Console.Write("Internal run-configuration has been modified, saving...");
+
+                    using (StreamWriter writer = new StreamWriter(File.Open(Path.Join(Directory.GetCurrentDirectory(), configPath), FileMode.Truncate)))
+                        writer.Write(runConfigJson);
+
+                    Console.WriteLine(" Done!");
+                }
+            }
         }
+    }
+
+    public static class CommonRegex
+    {
+        public const string Version = @"^.+ Version (\d+\.\d+\.\d+(?>\.\d+)?)";
+        public const string ServerStarted = @"^.+ (Server started\.)";
+        public const string PlayerConnected = @".+Player connected:\s(.+),";
+        public const string PlayerDisconnected = @".+Player disconnected:\s(.+),";
     }
 }

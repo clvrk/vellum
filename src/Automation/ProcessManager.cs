@@ -7,6 +7,7 @@ namespace Vellum.Automation
 {
     public class ProcessManager
     {
+        public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
         private string _lastMessage = "";
@@ -15,17 +16,7 @@ namespace Vellum.Automation
         private string _matchedText;
         public bool EnableConsoleOutput { get; set; } = true;
         public delegate void MatchHandler(object sender, MatchedEventArgs e);
-        public event EventHandler<ServerLaunchingEventArgs> OnServerLaunching;
-        public event EventHandler OnServerStarted;
-        public event EventHandler OnServerExited;
-        private Process Process { get; set; }
         private Dictionary<string, MatchHandler> _matchHandlers = new Dictionary<string, MatchHandler>();
-        private bool _enableWatchdog;
-        private uint _failRetryCount;
-        private uint _maxFailRetryCount;
-
-        private const uint DefaultWatchdogRetryCount = 3;
-        private const uint NoWatchdogRetry = 0;
 
         public bool IsRunning
         {
@@ -46,16 +37,12 @@ namespace Vellum.Automation
         public ProcessManager(ProcessStartInfo startInfo)
         {
             _startInfo = startInfo;
-            _failRetryCount = 0;
             this.Process = new Process();
             this.Process.StartInfo = startInfo;
             this.Process.StartInfo.RedirectStandardInput = true;
             this.Process.StartInfo.RedirectStandardOutput = true;
             this.Process.StartInfo.UseShellExecute = false;
             this.Process.OutputDataReceived += OutputTextReceived;
-            this.Process.EnableRaisingEvents = true;
-            this.Process.Exited += new EventHandler(ProcessExited);
-            RegisterMatchHandler(BdsStrings.ServerStarted, ServerSignaledStarted);
         }
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
@@ -65,38 +52,25 @@ namespace Vellum.Automation
             : this(startInfo)
         {
             _ignorePatterns = ignorePatterns;
-        }
-
-        public ProcessManager(ProcessStartInfo startInfo, string[] ignorePatterns, bool watchdog)
-            : this(startInfo, ignorePatterns)
-        {
-            this._enableWatchdog = watchdog;
-        }
-        
+        }      
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
         public bool Start()
         {
-            ServerLaunchingEventArgs launchSuccess = new ServerLaunchingEventArgs();
-
-            this._maxFailRetryCount = this._enableWatchdog ? DefaultWatchdogRetryCount : NoWatchdogRetry;
-
             if (this.Process.Start())
             {
                 this.Process.BeginOutputReadLine();
-                launchSuccess.LaunchProcessSuccess = true;
+                return true;
+            } else {
+                return false;
             }
-
-            OnServerLaunching?.Invoke(this, launchSuccess);
-
-            return launchSuccess.LaunchProcessSuccess;
         }
 
-        ///<summary>Stops process</summary>
-        public void Stop()
+        ///<summary>Frees the underlying process.</summary>
+        public void Close()
         {
-            this._maxFailRetryCount = NoWatchdogRetry;
-            this.TerminateProcess();
+            this.Process.CancelOutputRead();
+            this.Process.Close();
         }
 
         ///<summary>Sends a command to the underlying processes stdin and executes it.</summary>
@@ -144,9 +118,13 @@ namespace Vellum.Automation
             _pattern = pattern;
         }
 
+        ///<summary>Registers a function which should be called upon a matching stdout line given by the specified pattern. MatchHandlers should be registered before the process is started to avoid InvalidOperationException exceptions.</summary>
         public void RegisterMatchHandler(string pattern, MatchHandler handler)
         {
-            _matchHandlers.Add(pattern, handler);
+            if (!_matchHandlers.ContainsKey(pattern))
+                _matchHandlers.Add(pattern, handler);
+            else
+                _matchHandlers[pattern] += handler;
         }
 
         public string GetMatchedText()
@@ -192,18 +170,6 @@ namespace Vellum.Automation
                 SendInput("tellraw @a {\"rawtext\":[{\"text\":\"\\u00a7l[VELLUM]\"},{\"text\":\"\\u00a7r " + message + "\"}]}");
                 #endif
             }
-        }
-
-        private void TerminateProcess()
-        {
-            this.SendInput("stop");
-            this.Process.WaitForExit();
-        }
-
-        private void Clean()
-        {
-            this.Process.CancelOutputRead();
-            this.Process.Close();
         }
 
         private void OutputTextReceived(object sender, DataReceivedEventArgs e)
@@ -254,46 +220,10 @@ namespace Vellum.Automation
                 }
             }
         }
-
-        private void ProcessExited(object sender, EventArgs e)
-        {
-            OnServerExited?.Invoke(this, null);
-
-            this.Clean();
-
-            if(this._maxFailRetryCount != NoWatchdogRetry)
-            {
-                Console.WriteLine("BDS process unexpectedly exited");
-                if(++this._failRetryCount < this._maxFailRetryCount)
-                {
-                    Console.WriteLine("Retry #" + this._failRetryCount + " to start BDS server process");
-                    Start();
-                }
-                else
-                {
-                    Console.WriteLine("Max retry reached!");
-                }
-            }
-        }
-
-        private void ServerSignaledStarted(object sender, MatchedEventArgs e)
-        {
-            _failRetryCount = 0;
-            OnServerStarted?.Invoke(this, null);
-        }
     }
 
     public class MatchedEventArgs : EventArgs
     {
         public MatchCollection Matches;
-    }
-
-    public class ServerLaunchingEventArgs : EventArgs
-    {
-        public ServerLaunchingEventArgs()
-        {
-            this.LaunchProcessSuccess = false;
-        }
-        public bool LaunchProcessSuccess { get; set; }
     }
 }

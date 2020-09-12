@@ -12,7 +12,7 @@ namespace Vellum.Automation
         private Process _renderer;
         public RunConfiguration RunConfig;
 
-#region PLUGIN
+        #region PLUGIN
         public IHost Host;
         public Version Version { get; }
         public PluginType PluginType { get { return PluginType.INTERNAL; } }

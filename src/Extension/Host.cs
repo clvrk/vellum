@@ -18,7 +18,7 @@ namespace Vellum.Extension
         }
         private List<IPlugin> _activePlugins = new List<IPlugin>();
 
-        public Host(RunConfiguration runConfig)
+        public Host(ref RunConfiguration runConfig)
         {
             RunConfig = runConfig;
         }
@@ -34,10 +34,22 @@ namespace Vellum.Extension
                 {
                     if (typeof(IPlugin).IsAssignableFrom(type))
                     {
-                        IPlugin plugin = (IPlugin)pluginAssembly.CreateInstance(type.FullName);
-                        // plugin.PluginType = PluginType.EXTERNAL;
-                        _activePlugins.Add(plugin);
-                        pluginCount++;
+                        if (!RunConfig.Plugins.ContainsKey(type.Name))
+                        {
+                            RunConfig.Plugins.Add(type.Name, new PluginConfig()
+                            {
+                                Enable = true,
+                                Config = (Dictionary<string, object>)type.GetMethod("GetDefaultRunConfig", BindingFlags.Public | BindingFlags.Static).Invoke(null, null)
+                            });
+                        }
+
+                        if (RunConfig.Plugins[type.Name].Enable)
+                        {
+                            IPlugin plugin = (IPlugin)pluginAssembly.CreateInstance(type.FullName);
+                            // plugin.PluginType = PluginType.EXTERNAL;
+                            _activePlugins.Add(plugin);
+                            pluginCount++;
+                        }
                     }
                 }
             }

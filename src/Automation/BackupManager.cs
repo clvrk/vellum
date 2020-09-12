@@ -99,7 +99,9 @@ namespace Vellum.Automation
             // Shutdown server and take full backup
             if (RunConfig.Backups.StopBeforeBackup && _bds.IsRunning)
             {
-                _bds.Stop();
+                _bds.SendInput("stop");
+                _bds.Process.WaitForExit();
+                _bds.Close();
             }
 
             if (fullCopy || RunConfig.Backups.StopBeforeBackup)
@@ -252,7 +254,7 @@ namespace Vellum.Automation
             if (RunConfig.Backups.StopBeforeBackup && !_bds.IsRunning)
             {
                 _bds.Start();
-                _bds.WaitForMatch(@"^.+ (Server started\.)");
+                _bds.WaitForMatch(CommonRegex.ServerStarted);
             }
             
             #region POST EXEC

@@ -10,8 +10,8 @@
         public bool BusyCommands;
         public bool CheckForUpdates;
         public bool StopBdsOnException;
-        public PluginConfig Plugins;
         public bool BdsWatchdog;
+        public System.Collections.Generic.Dictionary<string, PluginConfig> Plugins;
     }
 
     public struct BackupConfig
@@ -40,6 +40,7 @@
 
     public struct PluginConfig
     {
-        public bool EnablePlugins;
+        public bool Enable;
+        public System.Collections.Generic.Dictionary<string, object> Config;
     }
 }

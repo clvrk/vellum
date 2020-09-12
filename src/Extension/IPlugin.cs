@@ -13,6 +13,7 @@ namespace Vellum.Extension
         public void Unload();
         public void RegisterHook(byte id, HookHandler callback);
         public Dictionary<byte, string> GetHooks();
+        // public Dictionary<string, object> GetDefaultRunConfig();
     }
 
     public enum PluginType
