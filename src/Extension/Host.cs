@@ -8,7 +8,7 @@ namespace Vellum.Extension
 {
     public class Host : InternalPlugin, IHost
     {
-        public RunConfiguration RunConfig { get; private set; }
+        public RunConfiguration RunConfig { get; internal set; }
         // Plugin host interface
         public Version Version
         {
@@ -20,11 +20,6 @@ namespace Vellum.Extension
         private List<IPlugin> _activePlugins = new List<IPlugin>();
         private string _pluginDir;
         public string PluginDirectory { get { return _pluginDir; } }
-
-        public Host(ref RunConfiguration runConfig)
-        {
-            RunConfig = runConfig;
-        }
 
         public void SetPluginDirectory(string directory)
         {

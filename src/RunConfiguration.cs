@@ -1,6 +1,6 @@
 ﻿namespace Vellum
 {
-    public struct RunConfiguration
+    public class RunConfiguration
     {
         public string BdsBinPath;
         public BackupConfig Backups;
@@ -14,7 +14,7 @@
         public System.Collections.Generic.Dictionary<string, PluginConfig> Plugins;
     }
 
-    public struct BackupConfig
+    public class BackupConfig
     {
         public bool EnableBackups;
         public double BackupInterval;
@@ -27,7 +27,7 @@
         public string PostExec;
     }
 
-    public struct RenderConfig
+    public class RenderConfig
     {
         public bool EnableRenders;
         public string PapyrusBinPath;
@@ -38,7 +38,7 @@
         public bool LowPriority;
     }
 
-    public struct PluginConfig
+    public class PluginConfig
     {
         public bool Enable;
         public object Config;
