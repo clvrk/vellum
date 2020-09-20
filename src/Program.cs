@@ -92,7 +92,7 @@ namespace Vellum
                 Console.Write($"Reading \"{_serverPropertiesPath}\"... ");
 
                 using (StreamReader reader = new StreamReader(File.OpenRead(Path.Join(bdsDirPath, _serverPropertiesPath))))
-                    worldName = Regex.Match(reader.ReadToEnd(), @"^level\-name\=(.+)", RegexOptions.Multiline).Groups[1].Value;
+                    worldName = Regex.Match(reader.ReadToEnd(), @"^level\-name\=(.+)", RegexOptions.Multiline).Groups[1].Value.Trim();
 
                 Console.WriteLine("Done!");
 
