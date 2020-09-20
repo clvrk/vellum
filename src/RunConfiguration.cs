@@ -36,6 +36,7 @@
         public string PapyrusGlobalArgs;
         public string[] PapyrusTasks;
         public bool LowPriority;
+        public bool OnActivityOnly;
     }
 
     public class PluginConfig

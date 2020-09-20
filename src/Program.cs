@@ -199,6 +199,7 @@ namespace Vellum
                 playerCount = 0;
 
                 bool nextBackup = true;
+                bool nextRender = true;
                 if (RunConfig.Backups.OnActivityOnly)
                 {
                     nextBackup = false;
@@ -208,6 +209,7 @@ namespace Vellum
                     {
                         playerCount++;
                         nextBackup = true;
+                        nextRender = true;
                     });
 
                     bds.RegisterMatchHandler(CommonRegex.PlayerDisconnected, (object sender, MatchedEventArgs e) =>
@@ -265,9 +267,7 @@ namespace Vellum
                             if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
                                 nextBackup = false;
                             InvokeBackup(worldPath, tempWorldPath);
-
-                        } else
-                            Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
+                        }
                     };
                     backupIntervalTimer.Start();
 
@@ -293,7 +293,14 @@ namespace Vellum
                     renderIntervalTimer.AutoReset = true;
                     renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                        InvokeRender(worldPath, tempWorldPath);
+                        if (nextRender)
+                        {
+                            if (RunConfig.Renders.OnActivityOnly && playerCount == 0)
+                            {
+                                nextRender = false;
+                                InvokeRender(worldPath, tempWorldPath);
+                            }
+                        }                        
                     };
                     renderIntervalTimer.Start();
                 }
@@ -478,7 +485,8 @@ namespace Vellum
                                 "--dim 2"
                             },
                             PapyrusOutputPath = "",
-                            LowPriority = false
+                            LowPriority = false,
+                            OnActivityOnly = false
                         },
                         QuietMode = false,
                         HideStdout = true,
