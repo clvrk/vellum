@@ -200,9 +200,11 @@ namespace Vellum
 
                 bool nextBackup = true;
                 bool nextRender = true;
-                if (RunConfig.Backups.OnActivityOnly)
+                if ((RunConfig.Backups.EnableBackups && RunConfig.Backups.OnActivityOnly) ||
+                    (RunConfig.Renders.EnableRenders && RunConfig.Renders.OnActivityOnly))
                 {
                     nextBackup = false;
+                    nextRender = false;
 
                     // Player connect/ disconnect messages
                     bds.RegisterMatchHandler(CommonRegex.PlayerConnected, (object sender, MatchedEventArgs e) =>
@@ -215,6 +217,12 @@ namespace Vellum
                     bds.RegisterMatchHandler(CommonRegex.PlayerDisconnected, (object sender, MatchedEventArgs e) =>
                     {
                         playerCount--;
+                    });
+
+                    // Handle update of player count when server is polled
+                    bds.RegisterMatchHandler(CommonRegex.PlayerCountCheck, (object sender, MatchedEventArgs e) =>
+                    {
+                        playerCount = Convert.ToUInt32(e.Matches[0].Groups[1].Value);
                     });
                 }
                 #endregion
@@ -264,8 +272,14 @@ namespace Vellum
                     {
                         if (nextBackup)
                         {
-                            if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
-                                nextBackup = false;
+                            if (RunConfig.Backups.OnActivityOnly)
+                            {
+                                // poll the server for an accurate player count
+                                // (player count can be inflated by people whose logins fail half way)
+                                bds.SendInput("list");
+                                Thread.Sleep(2000);
+                                if (playerCount == 0) nextBackup = false;
+                            }
                             InvokeBackup(worldPath, tempWorldPath);
                         }
                     };
@@ -295,11 +309,15 @@ namespace Vellum
                     {
                         if (nextRender)
                         {
-                            if (RunConfig.Renders.OnActivityOnly && playerCount == 0)
+                            if (RunConfig.Renders.OnActivityOnly)
                             {
-                                nextRender = false;
-                                InvokeRender(worldPath, tempWorldPath);
+                                // poll the server for an accurate player count
+                                // (player count can be inflated by people whose logins fail half way)
+                                bds.SendInput("list");
+                                Thread.Sleep(2000);
+                                if (playerCount == 0) nextRender = false;
                             }
+                            InvokeRender(worldPath, tempWorldPath);
                         }                        
                     };
                     renderIntervalTimer.Start();
@@ -577,5 +595,6 @@ namespace Vellum
         public const string ServerStarted = @"^.+ (Server started\.)";
         public const string PlayerConnected = @".+Player connected:\s(.+),";
         public const string PlayerDisconnected = @".+Player disconnected:\s(.+),";
+        public const string PlayerCountCheck = @"^There are (\d+)/\d+ players online:(.*)";
     }
 }
