@@ -16,7 +16,7 @@ before-install:
   - git checkout c1efd24ae26fd572cdc03575d3da5e0f588a9e43
   - chmod +x ./*
   - REPO_NAME=$(./get_repo-name.sh $TRAVIS_REPO_SLUG)
-  - TAG_CLEAN=$(./get_tag_clean.sh $(echo $TRAVIS_TAG | sed -E 's/\s\w+//')
+  - TAG_CLEAN=$(./get_tag_clean.sh $(echo $TRAVIS_TAG | sed -E 's/\s\w+//'))
   - ASSEMBLY_VERSION=$(./format_assembly-version.sh $TAG_CLEAN $TRAVIS_BUILD_NUMBER)
 before-script:
   - cd ~/build/${TRAVIS_REPO_SLUG}/src
