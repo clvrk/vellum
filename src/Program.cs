@@ -18,10 +18,9 @@ namespace Vellum
     public class VellumHost : Host
     {
         private const string _serverPropertiesPath = "server.properties";
-        private const string _tempPath = "temp/";
+        public const string TempPath = "temp/";
         private static string _pluginDirectory = "plugins/";
         private string _configPath = "configuration.json";
-        private static string _restorePath;
         public delegate void InputStreamHandler(string text);
         private static InputStreamHandler inStream;
         private static BackupManager _backupManager;
@@ -68,7 +67,7 @@ namespace Vellum
                 { "h|help", "Displays a help screen.", v => { printHelp = v != null; } },
                 { "c=|configuration=", "The configuration file to load settings from.", v => { if (!String.IsNullOrWhiteSpace(v)) _configPath = v.Trim(); } },
                 { "p=|plugin-directory=", "The directory to scan for plugins.", v => { if (!String.IsNullOrWhiteSpace(v)) _pluginDirectory = v; } },
-                { "r=|restore=", "Path to an archive to restore a backup from.", v => { if (!String.IsNullOrWhiteSpace(v)) restorePath = v; } },
+                { "r=|restore=", "Path to an archive to restore a backup from.", v => { if (!String.IsNullOrWhiteSpace(v)) restorePath = Path.GetFullPath(v); } },
                 { "no-start", "In conjunction with the --restore flag, this tells the application to not start the server after successfully restoring a backup.", v => { noStart = v != null; } },
                 { "no-backup-on-startup", "Disables the initial temporary backup on startup.", v => { backupOnStartup = v == null; } }
             };
@@ -94,15 +93,20 @@ namespace Vellum
                 using (StreamReader reader = new StreamReader(File.OpenRead(Path.Join(bdsDirPath, _serverPropertiesPath))))
                     worldName = Regex.Match(reader.ReadToEnd(), @"^level\-name\=(.+)", RegexOptions.Multiline).Groups[1].Value;
 
+                string worldPath = Path.Join(bdsDirPath, "worlds", worldName);
+                string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), TempPath, worldName);
+
                 Console.WriteLine("Done!");
 
-                if (!String.IsNullOrWhiteSpace(_restorePath))
+                if (!String.IsNullOrWhiteSpace(restorePath))
                 {
-                    BackupManager.Restore(_restorePath, "");
+                    Console.WriteLine("\n\"--restore\" flag provided, attempting to restore backup from specified archive...");
+                    BackupManager.Restore(restorePath, worldPath);
+                    Console.WriteLine();
 
                     if (noStart)
                     {
-                        Console.WriteLine("\"--no-start\" flag provided. Exiting...");
+                        Console.WriteLine("\"--no-start\" flag provided, exiting...");
                         System.Environment.Exit(0);
                     }
                 }
@@ -216,9 +220,6 @@ namespace Vellum
                     });
                 }
                 #endregion
-
-                string worldPath = Path.Join(bdsDirPath, "worlds", worldName);
-                string tempWorldPath = Path.Join(Directory.GetCurrentDirectory(), _tempPath, worldName);
 
                 _renderManager = new RenderManager(bds, RunConfig);
                 _backupManager = new BackupManager(bds, RunConfig);

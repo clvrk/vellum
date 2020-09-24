@@ -306,9 +306,43 @@ namespace Vellum.Automation
         ///<summary>Restores an archived backup.</summary>
         public static bool Restore(string archivePath, string destinationPath)
         {
-            
+            if (File.Exists(archivePath) && (Path.GetExtension(archivePath) == ".zip"))
+            {
+                if (Directory.Exists(destinationPath))
+                {
+                    Console.WriteLine("Creating precautionary backup of current world...");
+                    string restoreBackupPath = Path.Join(Directory.GetCurrentDirectory(), VellumHost.TempPath, "restore");
+                    string currentWorldBackupPath = Path.Join(restoreBackupPath, Path.GetFileName(destinationPath));
+                    CopyDirectory(destinationPath, currentWorldBackupPath);
 
-            return true;
+                    if (Archive(currentWorldBackupPath, restoreBackupPath, -1))
+                    {
+                        Console.WriteLine("A PRECAUTIONARY BACKUP OF YOUR CURRENT WORLD HAS BEEN ARCHIVED TO:\n" + Path.GetFullPath(restoreBackupPath));
+
+                        Console.WriteLine("Deleting current world...");
+                        Directory.Delete(currentWorldBackupPath, true);
+                        Directory.Delete(destinationPath, true);
+                    }
+                } else
+                {
+                    Console.WriteLine($"Could not find directory of current world \"{Path.GetFileName(destinationPath)}\", skipping precautionary backup...");
+                }
+
+                Console.WriteLine("Restoring world from archive...");
+                ZipFile.ExtractToDirectory(archivePath, destinationPath);
+
+                Console.WriteLine("Successfully restored backup!");
+
+                return true;
+                
+            } else
+            {
+                Console.WriteLine("Could not restore backup because specified archive does not exist!");
+            }
+
+            Console.WriteLine("Failed to restore backup!");
+
+            return false;
         }
 
         ///<summary>Copies an existing directory.</summary>
