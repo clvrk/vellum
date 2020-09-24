@@ -84,7 +84,7 @@ namespace Vellum
             {
                 // Load configuration
                 RunConfig = LoadConfiguration(_configPath);
-
+              
                 string bdsDirPath = Path.GetDirectoryName(RunConfig.BdsBinPath);
                 string worldName = "Bedrock level";
 
@@ -200,7 +200,7 @@ namespace Vellum
                 {
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
-
+                
                 playerCount = 0;
 
                 bool nextBackup = true;
