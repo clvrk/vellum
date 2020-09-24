@@ -43,13 +43,17 @@ namespace Vellum
 
         static void Main(string[] args)
         {
-            string debugTag = "";
+            string suffix = "";
 
 #if DEBUG
-            debugTag = " DEBUG";
+            suffix = " DEBUG";
+#elif ALPHA
+            suffix = " alpha";
+#elif BETA
+            suffix = " beta";
 #endif
 
-            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86, DeepBlue & contributors\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + debugTag, _localVersion.Build, new string(' ', 7));
+            Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86, DeepBlue & contributors\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + suffix, _localVersion.Build, new string(' ', 7));
 
             new VellumHost(args);
         }
@@ -201,7 +205,7 @@ namespace Vellum
                 {
                     _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
-
+                
                 playerCount = 0;
 
                 bool nextBackup = true;
@@ -621,8 +625,6 @@ namespace Vellum
             {
                 byte[] sourceHash = md5.ComputeHash(File.ReadAllBytes(Path.Join(Directory.GetCurrentDirectory(), _configPath)));
                 byte[] targetHash = md5.ComputeHash(Encoding.UTF8.GetBytes(runConfigJson));
-
-                File.WriteAllBytes("configuration.json.new", Encoding.UTF8.GetBytes(runConfigJson));
 
                 // System.Console.WriteLine(Convert.ToBase64String(sourceHash));
                 // System.Console.WriteLine(Convert.ToBase64String(targetHash));

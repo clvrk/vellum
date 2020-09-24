@@ -16,14 +16,15 @@ before-install:
   - git checkout c1efd24ae26fd572cdc03575d3da5e0f588a9e43
   - chmod +x ./*
   - REPO_NAME=$(./get_repo-name.sh $TRAVIS_REPO_SLUG)
-  - TAG_CLEAN=$(./get_tag_clean.sh $TRAVIS_TAG)
+  - TAG_CLEAN=$(./get_tag_clean.sh $(echo $TRAVIS_TAG | sed -E 's/\s\w+//')
   - ASSEMBLY_VERSION=$(./format_assembly-version.sh $TAG_CLEAN $TRAVIS_BUILD_NUMBER)
 before-script:
   - cd ~/build/${TRAVIS_REPO_SLUG}/src
 script:
   - ARTIFACT_SUFFIX=$(if [ "$SELF_CONTAINED" == "true" ]; then echo "-bundled"; elif [ "$OUTPUT_TYPE" == "Library" ]; then echo "-lib"; else echo ""; fi)
   - ARTIFACT_NAME=${REPO_NAME}_${RUNTIME}${ARTIFACT_SUFFIX}_v${TAG_CLEAN}-${TRAVIS_BUILD_NUMBER}
-  - dotnet publish vellum.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED}
+  - VERSION_SUFFIX=$(echo $TRAVIS_TAG | sed -E 's/.+\s//')
+  - dotnet publish vellum.csproj -c Release -r ${RUNTIME} /property:Version=${ASSEMBLY_VERSION} /property:OutputType=${OUTPUT_TYPE} /p:PublishTrimmed=${SELF_CONTAINED} --self-contained ${SELF_CONTAINED} $(if [[ ! -z $VERSION_SUFFIX ]]; then echo "/p:DefineConstants=\"$(echo $VERSION_SUFFIX | tr [:lower:] [:upper:])\""; fi)
 before_deploy:
   - cd bin/Release/netcoreapp3.1/${RUNTIME}/publish && zip ${ARTIFACT_NAME}.zip ./*
   - wget -q https://github.com/${TRAVIS_REPO_SLUG}/releases/download/${TRAVIS_TAG}/sha256sums.txt || true
