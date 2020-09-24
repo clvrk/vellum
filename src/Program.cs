@@ -44,12 +44,12 @@ namespace Vellum
         {
             string debugTag = "";
 
-            #if DEBUG
+#if DEBUG
             debugTag = " DEBUG";
-            #endif
+#endif
 
             Console.WriteLine("vellum v{0} build {1}\n{2}by clarkx86, DeepBlue & contributors\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION) + debugTag, _localVersion.Build, new string(' ', 7));
-            
+
             new VellumHost(args);
         }
 
@@ -123,7 +123,8 @@ namespace Vellum
                         {
                             Console.WriteLine("\nA new update is available!\nLocal version:\t{0}\nRemote version:\t{1}\nVisit {2} to update.\n", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), @"https://git.io/vellum-latest");
                         }
-                    } else
+                    }
+                    else
                     {
                         System.Console.WriteLine("Could not check for updates.");
                     }
@@ -163,7 +164,7 @@ namespace Vellum
                 {
                     _bdsWatchdog = new Watchdog(bds);
 
-                    _bdsWatchdog.RegisterHook((byte)Watchdog.Hook.LIMIT_REACHED, (object sender, EventArgs e) => 
+                    _bdsWatchdog.RegisterHook((byte)Watchdog.Hook.LIMIT_REACHED, (object sender, EventArgs e) =>
                     {
                         SaveConfiguration(RunConfig, _configPath);
                         System.Environment.Exit(1);
@@ -237,7 +238,7 @@ namespace Vellum
                     if (RunConfig.BdsWatchdog)
                         AddPlugin(_bdsWatchdog);
                     #endregion
-                    
+
                     if (LoadPlugins() > 0)
                     {
                         foreach (IPlugin plugin in GetPlugins())
@@ -248,32 +249,91 @@ namespace Vellum
 
                         Console.WriteLine();
                     }
-                } else
+                }
+                else
                 {
                     Directory.CreateDirectory(_pluginDirectory);
                 }
                 #endregion
 
-                // Backup interval
+                // Scheduled/ interval backups
                 if (RunConfig.Backups.EnableBackups)
                 {
-                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.Backups.BackupInterval * 60000);
+                    double interval = RunConfig.Backups.BackupInterval * 60000;
+
+                    if (RunConfig.Backups.EnableSchedule)
+                    {
+                        if (RunConfig.Backups.Schedule.Length == 0)
+                            Console.WriteLine("Scheduled backups are enabled but there are no entries in the schedule, switching to interval backups!");
+                        else
+                            interval = 1;
+                    }
+
+                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(interval);
                     backupIntervalTimer.AutoReset = true;
                     backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                        if (nextBackup)
+                        if (backupIntervalTimer.Interval != 1) // This prevents performing a backup if scheduled backups are enabled and the next real time-span hasn't been determined yet
                         {
-                            if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
-                                nextBackup = false;
-                            InvokeBackup(worldPath, tempWorldPath);
+                            if (nextBackup)
+                            {
+                                InvokeBackup(worldPath, tempWorldPath);
 
-                        } else
-                            Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
+                                if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
+                                    nextBackup = false;
+                            }
+                            else
+                                Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
+                        }
                     };
+
+                    if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
+                    {
+                        backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                        {
+                            // Check which entry is up next
+                            TimeSpan nextSpan = TimeSpan.MaxValue;
+
+                            foreach (string clockTime in RunConfig.Backups.Schedule)
+                            {
+                                // Parse & validate entry
+                                // Match match = Regex.Match(clockTime, @"^\s*(\d{1,2})\s*:\s*(\d{1,2})\s*([aApP][mM])");   // 12h format
+                                Match match = Regex.Match(clockTime, @"^\s*(\d{1,2})\s*:\s*(\d{1,2})\s*$");                 // 24h format
+
+                                bool valid = false;
+                                int hour, minute;
+
+                                if (match.Groups.Count == 3)
+                                {
+                                    hour = Convert.ToInt32(match.Groups[1].Value);
+                                    minute = Convert.ToInt32(match.Groups[2].Value);
+
+                                    if ((hour >= 0 && hour <= 23) && (minute >= 0 && minute <= 59))
+                                    {
+                                        valid = true;
+
+                                        TimeSpan span = new TimeSpan((hour == 0 ? 24 : hour) - DateTime.Now.Hour, minute - DateTime.Now.Minute, 0 - DateTime.Now.Second);
+
+                                        if (span.TotalSeconds > 0 && span < nextSpan)
+                                            nextSpan = span;
+                                    }
+                                }
+
+                                if (!valid)
+                                    Console.WriteLine($"Invalid schedule entry \"{clockTime}\" in \"{_configPath}\"!");
+                            }
+
+                            // Set the new interval
+                            Console.WriteLine($"Next scheduled backup is at {(DateTime.Now + nextSpan).ToShortTimeString()} (in {nextSpan.Days} days, {nextSpan.Hours} hours, {nextSpan.Minutes} minutes and {nextSpan.Seconds} seconds)");
+                            backupIntervalTimer.Interval = nextSpan.TotalMilliseconds;
+                        };
+                    }
+
                     backupIntervalTimer.Start();
 
-                    bds.RegisterMatchHandler("Starting Server", (object sender, MatchedEventArgs e) => {
-                    // bds.RegisterMatchHandler(CommonRegex.ServerStarted, (object sender, MatchedEventArgs e) => {
+                    bds.RegisterMatchHandler("Starting Server", (object sender, MatchedEventArgs e) =>
+                    {
+                        // bds.RegisterMatchHandler(CommonRegex.ServerStarted, (object sender, MatchedEventArgs e) => {
                         if (RunConfig.Backups.StopBeforeBackup)
                         {
                             System.Timers.Timer backupNotificationTimer = new System.Timers.Timer((RunConfig.Backups.BackupInterval * 60000) - Math.Clamp(RunConfig.Backups.NotifyBeforeStop * 1000, 0, RunConfig.Backups.BackupInterval * 60000));
@@ -354,7 +414,8 @@ namespace Vellum
                                 case "stop":
                                     System.Timers.Timer shutdownTimer = new System.Timers.Timer();
                                     shutdownTimer.AutoReset = false;
-                                    shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) => {
+                                    shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                                    {
                                         // _renderManager.Abort();
                                         bds.SendInput("stop");
                                         bds.Process.WaitForExit();
@@ -379,12 +440,14 @@ namespace Vellum
                                             bds.SendTellraw(String.Format("Scheduled shutdown in {0} seconds...", interval));
                                             result = true;
                                             CallHook((byte)Hook.EXIT_SCHEDULED, new HookEventArgs() { Attachment = interval });
-                                        } catch
+                                        }
+                                        catch
                                         {
                                             Console.WriteLine("Could not schedule shutdown because \"{0}\" is not a valid number.", cmd[1].Captures[0].Value);
                                             result = false;
                                         }
-                                    } else
+                                    }
+                                    else
                                     {
                                         shutdownTimer.Interval = 1;
                                         result = true;
@@ -403,7 +466,8 @@ namespace Vellum
                                     {
                                         RunConfig = LoadConfiguration(_configPath);
                                         isVellumConfig = true;
-                                    } else
+                                    }
+                                    else
                                     {
                                         bds.SendInput(text);
                                     }
@@ -417,16 +481,16 @@ namespace Vellum
                                     // BDS
                                     UpdateChecker bdsUpdateChecker = new UpdateChecker(ReleaseProvider.HTML, "https://minecraft.net/en-us/download/server/bedrock/", @"https:\/\/minecraft\.azureedge\.net\/bin-" + (System.Environment.OSVersion.Platform == PlatformID.Win32NT ? "win" : "linux") + @"\/bedrock-server-(\d+\.\d+\.\d+(?>\.\d+)?)\.zip");
                                     if (bdsUpdateChecker.GetLatestVersion())
-                                            Console.WriteLine(String.Format("Bedrock Server:\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_bdsVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), bdsUpdateChecker.RemoteVersion > _bdsVersion ? "outdated" : "up to date"));
+                                        Console.WriteLine(String.Format("Bedrock Server:\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_bdsVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), bdsUpdateChecker.RemoteVersion > _bdsVersion ? "outdated" : "up to date"));
                                     else
-                                            Console.WriteLine("Could not check for Bedrock server updates...");
+                                        Console.WriteLine("Could not check for Bedrock server updates...");
 
                                     // vellum
                                     if (_updateChecker.GetLatestVersion())
-                                            Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
+                                        Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
                                     else
-                                            Console.WriteLine("Could not check for vellum updates...");
-                                    
+                                        Console.WriteLine("Could not check for vellum updates...");
+
                                     result = true;
                                     break;
 
@@ -458,12 +522,19 @@ namespace Vellum
                         Backups = new BackupConfig()
                         {
                             EnableBackups = true,
+                            EnableSchedule = true,
+                            Schedule = new string[] {
+                                "00:00",
+                                "06:00",
+                                "12:00",
+                                "18:00"
+                            },
+                            BackupInterval = 60,
+                            ArchivePath = "./backups/",
                             StopBeforeBackup = false,
                             NotifyBeforeStop = 60,
-                            ArchivePath = "./backups/",
                             BackupsToKeep = 10,
                             OnActivityOnly = false,
-                            BackupInterval = 60,
                             PreExec = "",
                             PostExec = "",
                         },
@@ -487,7 +558,8 @@ namespace Vellum
                         CheckForUpdates = true,
                         StopBdsOnException = true,
                         BdsWatchdog = true,
-                        Plugins = new Dictionary<string, PluginConfig>() },
+                        Plugins = new Dictionary<string, PluginConfig>()
+                    },
                         Formatting.Indented));
                 }
 

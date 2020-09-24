@@ -17,6 +17,8 @@
     public class BackupConfig
     {
         public bool EnableBackups;
+        public bool EnableSchedule;
+        public string[] Schedule;
         public double BackupInterval;
         public string ArchivePath;
         public int BackupsToKeep;
