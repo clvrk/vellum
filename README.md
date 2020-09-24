@@ -97,6 +97,14 @@ BACKUP SETTINGS
 ---------------
 EnableBackups      Boolean (!)        Whether to create world-backups as .zip-archives
 
+EnableSchedule     Boolean (!)        Whether to enable scheduled backups. If set to "false",
+                                      backups will be performed on the interval specified by
+                                      "BackupInterval".
+
+Schedule           String [Array]     An array of clock times (in 24h format) where scheduled
+                                      backups should be performed (see the example configuration
+                                      below for formatting).
+
 BackupInterval     Double             Time in minutes to take a backup and create a
                                       .zip-archive
 
@@ -198,6 +206,13 @@ Below you'll find an example configuration.
     "WorldName": "Bedrock level",
     "Backups": {
       "EnableBackups": true,
+      "EnableSchedule": true,
+      "Schedule": [
+        "00:00",
+        "06:00",
+        "12:00",
+        "18:00"
+      ],
       "BackupInterval": 60.0,
       "ArchivePath": "./backups/",
       "BackupsToKeep": 10,
@@ -213,7 +228,7 @@ Below you'll find an example configuration.
       "PapyrusBinPath": "/home/server/papyruscs/PapyrusCs",
       "PapyrusOutputPath": "/home/server/papyruscs_output",
       "RenderInterval": 180.0,
-      "PapyrusGlobalArgs": "-w ${WORLD_PATH} -o ${OUTPUT_PATH} --htmlfile index.html --deleteexistingupdatefolder",
+      "PapyrusGlobalArgs": "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html --deleteexistingupdatefolder",
       "PapyrusTasks": [
         "--dim 0",
         "--dim 1",
@@ -224,7 +239,8 @@ Below you'll find an example configuration.
     "HideStdout": true,
     "BusyCommands": true,
     "CheckForUpdates": true,
-    "StopBdsOnException": true
+    "StopBdsOnException": true,
+    "BdsWatchdog": true
 }
 ```
 </details>
