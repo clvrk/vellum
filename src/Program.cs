@@ -34,6 +34,7 @@ namespace Vellum
         public enum Hook
         {
             RELOAD_CONFIG,
+            BACKUP_SCHEDULED,
             FORCE_BACKUP,
             FORCE_RENDER,
             EXIT_SCHEDULED,     // Gets invoked as soon as the user schedules a server shutdown
@@ -326,6 +327,7 @@ namespace Vellum
                             // Set the new interval
                             Console.WriteLine($"Next scheduled backup is at {(DateTime.Now + nextSpan).ToShortTimeString()} (in {nextSpan.Days} days, {nextSpan.Hours} hours, {nextSpan.Minutes} minutes and {nextSpan.Seconds} seconds)");
                             backupIntervalTimer.Interval = nextSpan.TotalMilliseconds;
+                            CallHook((byte)Hook.BACKUP_SCHEDULED, new HookEventArgs() { Attachment = nextSpan });
                         };
                     }
 
@@ -618,10 +620,12 @@ namespace Vellum
             using (MD5 md5 = MD5.Create())
             {
                 byte[] sourceHash = md5.ComputeHash(File.ReadAllBytes(Path.Join(Directory.GetCurrentDirectory(), _configPath)));
-                byte[] targetHash = md5.ComputeHash(Encoding.ASCII.GetBytes(runConfigJson));
+                byte[] targetHash = md5.ComputeHash(Encoding.UTF8.GetBytes(runConfigJson));
 
-                //System.Console.WriteLine(Convert.ToBase64String(sourceHash));
-                //System.Console.WriteLine(Convert.ToBase64String(targetHash));
+                File.WriteAllBytes("configuration.json.new", Encoding.UTF8.GetBytes(runConfigJson));
+
+                // System.Console.WriteLine(Convert.ToBase64String(sourceHash));
+                // System.Console.WriteLine(Convert.ToBase64String(targetHash));
 
                 if (Convert.ToBase64String(sourceHash) != Convert.ToBase64String(targetHash))
                 {

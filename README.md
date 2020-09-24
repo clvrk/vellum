@@ -58,16 +58,16 @@ Once the server has launched through this tool you will be able to use the serve
 To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option (`-1` to not delete any older archives) to prevent eventually running out of disk space.
 
 ### Restoring backups
-Recent backups can be restored using the `--restore` (or `-r`) flag, followed by the path to an archive. It is sufficient to merely supply the archives filename without its full path and vellum will look for this file in the `ArchivePath` of the specified (or default) configuration. You can however also specify an absolute path.\
-After successfully restoring a backup, vellum will start and invoke the server like usual. If you do not want the server to automatically start after restoring a backup, specify the `--no-start` flag.
+Recent backups can be restored using the `--restore` (or `-r`) flag, followed by the path to an archive.\
+After successfully restoring a backup, vellum will start the server like usual. If you do not want the server to automatically start after restoring a backup, specify the `--no-start` flag.
 
 Usage examples:
 ```bash
 # Restore the specified archive from vellums backup directory and start the server
-vellum -r "2020-07-30_10-59_MyWorld.zip"
+vellum -r "backups/2020-07-30_10-59_MyWorld.zip"
 
 # Restore the specified archive from its absolute path and don't start the server afterwards
-vellum -r "~/vellum/backups/2020-07-30_10-59_MyWorld.zip" --no-start
+vellum -r "/home/server/vellum/backups/2020-07-30_10-59_MyWorld.zip" --no-start
 ```
 
 ### PapyrusCS integration

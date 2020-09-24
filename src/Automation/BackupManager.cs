@@ -187,7 +187,7 @@ namespace Vellum.Automation
 
                 Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
-                CallHook((byte)Hook.SAVE_RESUME);
+                CallHook((byte)Hook.SAVE_RESUME, new HookEventArgs() { Attachment = sourceFiles });
 
                 _bds.SendInput("save resume");
                 _bds.WaitForMatch("^(Changes to the level are resumed.)");

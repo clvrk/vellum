@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
+using Vellum.Networking;
 
 namespace Vellum.Extension
 {
@@ -10,13 +11,6 @@ namespace Vellum.Extension
     {
         public RunConfiguration RunConfig { get; internal set; }
         // Plugin host interface
-        public Version Version
-        {
-            get
-            {
-                return new Version();
-            }
-        }
         private List<IPlugin> _activePlugins = new List<IPlugin>();
         private string _pluginDir;
         public string PluginDirectory { get { return _pluginDir; } }
@@ -37,21 +31,32 @@ namespace Vellum.Extension
                 {
                     if (typeof(IPlugin).IsAssignableFrom(type))
                     {
-                        if (!RunConfig.Plugins.ContainsKey(type.Name))
-                        {
-                            RunConfig.Plugins.Add(type.Name, new PluginConfig()
-                            {
-                                Enable = true,
-                                Config = type.GetMethod("GetDefaultRunConfiguration", BindingFlags.Public | BindingFlags.Static).Invoke(null, null)
-                            });
-                        }
+                        Version minVersion = null;
+#if !DEBUG
+                        minVersion = (Version)type.GetField("MinVersion", BindingFlags.Public | BindingFlags.Static)?.GetValue(type);
+#endif                        
 
-                        if (RunConfig.Plugins[type.Name].Enable)
+                        if (minVersion == null || Assembly.GetExecutingAssembly().GetName().Version >= minVersion)
                         {
-                            IPlugin plugin = (IPlugin)pluginAssembly.CreateInstance(type.FullName);
-                            // plugin.PluginType = PluginType.EXTERNAL;
-                            _activePlugins.Add(plugin);
-                            pluginCount++;
+                            if (!RunConfig.Plugins.ContainsKey(type.Name))
+                            {
+                                RunConfig.Plugins.Add(type.Name, new PluginConfig()
+                                {
+                                    Enable = true,
+                                    Config = type.GetMethod("GetDefaultRunConfiguration", BindingFlags.Public | BindingFlags.Static).Invoke(null, null)
+                                });
+                            }
+
+                            if (RunConfig.Plugins[type.Name].Enable)
+                            {
+                                IPlugin plugin = (IPlugin)pluginAssembly.CreateInstance(type.FullName);
+                                // plugin.PluginType = PluginType.EXTERNAL;
+                                _activePlugins.Add(plugin);
+                                pluginCount++;
+                            }
+                        } else
+                        {
+                            Console.WriteLine($"Plugin \"{type.Name}\" incompatible, requires host version v{UpdateChecker.ParseVersion(minVersion, VersionFormatting.MAJOR_MINOR_REVISION)}");
                         }
                     }
                 }
@@ -93,7 +98,10 @@ namespace Vellum.Extension
 
         public T LoadPluginConfiguration<T>(Type type)
         {
-           return ((JObject)RunConfig.Plugins[type.Name].Config).ToObject<T>();
+            if (RunConfig.Plugins[type.Name].Config.GetType() == typeof(JObject))
+                return ((JObject)RunConfig.Plugins[type.Name].Config).ToObject<T>();
+            else
+                return (T)(RunConfig.Plugins[type.Name].Config);
         }
     }
 }
