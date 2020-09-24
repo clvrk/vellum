@@ -263,10 +263,10 @@ namespace Vellum
                     {
                         if (nextBackup)
                         {
-                            InvokeBackup(worldPath, tempWorldPath);
-
                             if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
                                 nextBackup = false;
+                            InvokeBackup(worldPath, tempWorldPath);
+
                         } else
                             Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
                     };
