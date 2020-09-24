@@ -423,6 +423,7 @@ namespace Vellum
                                     shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                                     {
                                         // _renderManager.Abort();
+                                        _bdsWatchdog.Disable();
                                         bds.SendInput("stop");
                                         bds.Process.WaitForExit();
                                         bds.Close();
