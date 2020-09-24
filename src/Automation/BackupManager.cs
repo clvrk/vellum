@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Vellum.Extension;
 
 namespace Vellum.Automation
 {
@@ -13,6 +15,22 @@ namespace Vellum.Automation
         public RunConfiguration RunConfig;
         ///<summary>Time in milliseconds to wait until sending next <code>save query</code> command to <code>ProcessManager</code>'s process</summary>
         public int QueryTimeout { get; set; } = 500;
+
+        #region PLUGIN
+        public Version Version { get; }
+        public enum Hook
+        {
+            BEGIN,
+            SAVE_HOLD,
+            SAVE_RESUME,
+            COPY,
+            COPY_END,
+            INTEGRITY,
+            INTEGRITY_END,
+            ARCHIVE,
+            END
+        }
+        #endregion
 
         public BackupManager(ProcessManager p, RunConfiguration runConfig)
         {
@@ -31,6 +49,8 @@ namespace Vellum.Automation
         {
             Processing = true;
 
+            CallHook((byte)Hook.BEGIN);
+
             #region PRE EXEC
             if (!string.IsNullOrWhiteSpace(RunConfig.Backups.PreExec))
             {
@@ -47,7 +67,6 @@ namespace Vellum.Automation
             if (RunConfig.Backups.StopBeforeBackup && _bds.IsRunning)
             {
                 _bds.SendInput("stop");
-                // _bds.WaitForMatch(new Regex(@"^(Quit correctly)"));
                 _bds.Process.WaitForExit();
                 _bds.Close();
             }
@@ -81,6 +100,8 @@ namespace Vellum.Automation
             else
             {
                 Log(String.Format("{0}{1}Holding world saving...", _tag, _indent));
+
+                CallHook((byte)Hook.SAVE_HOLD);
 
                 _bds.SendInput("save hold");
                 _bds.SetMatchPattern("(" + Path.GetFileName(worldPath) + @"\/)");
@@ -166,6 +187,8 @@ namespace Vellum.Automation
 
                 Log(String.Format("{0}{1}Resuming world saving...", _tag, _indent));
 
+                CallHook((byte)Hook.SAVE_RESUME, new HookEventArgs() { Attachment = sourceFiles });
+
                 _bds.SendInput("save resume");
                 _bds.WaitForMatch("^(Changes to the level are resumed.)");
             }
@@ -175,6 +198,8 @@ namespace Vellum.Automation
             // Archive
             if (archive)
             {
+                CallHook((byte)Hook.ARCHIVE);
+
                 Log(String.Format("{0}{1}Archiving world backup...", _tag, _indent));
                 if (Archive(destinationPath, RunConfig.Backups.ArchivePath, RunConfig.Backups.BackupsToKeep))
                 {
@@ -196,7 +221,7 @@ namespace Vellum.Automation
             if (RunConfig.Backups.StopBeforeBackup && !_bds.IsRunning)
             {
                 _bds.Start();
-                _bds.WaitForMatch(@"^.+ (Server started\.)");
+                _bds.WaitForMatch(CommonRegex.ServerStarted);
             }
             
             #region POST EXEC
@@ -206,6 +231,8 @@ namespace Vellum.Automation
                 ProcessManager.RunCustomCommand(RunConfig.Backups.PostExec);
             }
             #endregion
+
+            CallHook((byte)Hook.END);
 
             Processing = false;
         }
@@ -274,6 +301,48 @@ namespace Vellum.Automation
             }
 
             return result;
+        }
+
+        ///<summary>Restores an archived backup.</summary>
+        public static bool Restore(string archivePath, string destinationPath)
+        {
+            if (File.Exists(archivePath) && (Path.GetExtension(archivePath) == ".zip"))
+            {
+                if (Directory.Exists(destinationPath))
+                {
+                    Console.WriteLine("Creating precautionary backup of current world...");
+                    string restoreBackupPath = Path.Join(Directory.GetCurrentDirectory(), VellumHost.TempPath, "restore");
+                    string currentWorldBackupPath = Path.Join(restoreBackupPath, Path.GetFileName(destinationPath));
+                    CopyDirectory(destinationPath, currentWorldBackupPath);
+
+                    if (Archive(currentWorldBackupPath, restoreBackupPath, -1))
+                    {
+                        Console.WriteLine("A PRECAUTIONARY BACKUP OF YOUR CURRENT WORLD HAS BEEN ARCHIVED TO:\n" + Path.GetFullPath(restoreBackupPath));
+
+                        Console.WriteLine("Deleting current world...");
+                        Directory.Delete(currentWorldBackupPath, true);
+                        Directory.Delete(destinationPath, true);
+                    }
+                } else
+                {
+                    Console.WriteLine($"Could not find directory of current world \"{Path.GetFileName(destinationPath)}\", skipping precautionary backup...");
+                }
+
+                Console.WriteLine("Restoring world from archive...");
+                ZipFile.ExtractToDirectory(archivePath, destinationPath);
+
+                Console.WriteLine("Successfully restored backup!");
+
+                return true;
+                
+            } else
+            {
+                Console.WriteLine("Could not restore backup because specified archive does not exist!");
+            }
+
+            Console.WriteLine("Failed to restore backup!");
+
+            return false;
         }
 
         ///<summary>Copies an existing directory.</summary>

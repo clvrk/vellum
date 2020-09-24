@@ -24,6 +24,7 @@ namespace Vellum.Networking
     {
         public Version RemoteVersion { get; private set; } = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         public ReleaseProvider Provider { get; private set; }
+        private const ushort _timeout = 3000;
         private string _apiUrl;
         private string _regex;
 
@@ -38,11 +39,13 @@ namespace Vellum.Networking
         {
             bool result = false;
 
+            HttpWebRequest req = WebRequest.CreateHttp(_apiUrl);
+            req.Timeout = _timeout;
+            req.UserAgent = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name.ToString();
+            
             switch (Provider)
             {
                 case ReleaseProvider.GITHUB_RELEASES:
-                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(_apiUrl);
-                    req.UserAgent = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name.ToString();
                     try
                     {
                         HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
@@ -67,13 +70,12 @@ namespace Vellum.Networking
                 break;
 
                 case ReleaseProvider.HTML:
-                    HttpWebRequest request = WebRequest.CreateHttp(_apiUrl);
-
+                    //HttpWebRequest request = WebRequest.CreateHttp(_apiUrl);
                     try
                     {
-                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                        HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
 
-                        using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                        using (StreamReader reader = new StreamReader(resp.GetResponseStream()))
                         {
                             Match match = Regex.Match(reader.ReadToEnd(), _regex);
                             
