@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Diagnostics;
 using System.Collections.Generic;
+using Vellum.Extension;
 
 namespace Vellum.Automation
 {
@@ -10,6 +11,17 @@ namespace Vellum.Automation
         private ProcessManager _bds;
         private Process _renderer;
         public RunConfiguration RunConfig;
+
+        #region PLUGIN
+        public Version Version { get; }
+        public enum Hook
+        {
+            BEGIN,
+            ABORT,
+            NEXT,
+            END
+        }
+        #endregion
 
         public RenderManager(ProcessManager p, RunConfiguration runConfig)
         {
@@ -25,6 +37,8 @@ namespace Vellum.Automation
             _bds.SendTellraw("Rendering map...");
 
             Log(String.Format("{0}Initializing map rendering...", _tag));
+
+            CallHook((byte)Hook.BEGIN);
 
             // Create temporary copy of latest backup to initiate render on
             string prfx = "_";
@@ -60,8 +74,25 @@ namespace Vellum.Automation
                 _renderer.StartInfo.RedirectStandardInput = true;
 
                 Log(String.Format("{0}{1}Rendering map {2}/{3}...", _tag, _indent, i + 1, RunConfig.Renders.PapyrusTasks.Length));
+                
+                // To pre-emptively start a process with defined priority you need to set calling process to said priority.
+                Process parentProcess = Process.GetCurrentProcess();
+                ProcessPriorityClass parentPriority = parentProcess.PriorityClass;
+                if(RunConfig.Renders.LowPriority)
+                {
+                    parentProcess.PriorityClass = ProcessPriorityClass.Idle;
+                }
 
                 _renderer.Start();
+
+                CallHook((byte)Hook.NEXT, new HookEventArgs() { Attachment = i });
+
+                if(RunConfig.Renders.LowPriority)
+                {
+                    // Set back parent process to original priority
+                    parentProcess.PriorityClass = parentPriority;
+                }
+                
                 _renderer.WaitForExit();
             }
 
@@ -73,6 +104,8 @@ namespace Vellum.Automation
 
             // Send tellraw message 2/2
             _bds.SendTellraw("Done rendering!");
+
+            CallHook((byte)Hook.END);
 
             Processing = false;
         }
@@ -87,6 +120,8 @@ namespace Vellum.Automation
             } else {
                 result = false;
             }
+
+            CallHook((byte)Hook.ABORT, new HookEventArgs() { Attachment = result });
 
             return result;
         }

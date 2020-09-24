@@ -17,10 +17,12 @@
 **vellum** is a **Minecraft: Bedrock Server** (BDS) **automation tool** primarily made to create incremental (hot-)backups and render interactive maps of your world using [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs), all while the server is running without any server-downtime using BDS's `save hold | query | resume` commands.
 
 ## Table of contents
+- [Table of contents](#table-of-contents)
 - [Get started](#get-started)
   - [Prerequisites](#prerequisites)
   - [Installing and configuring](#installing-and-configuring)
   - [Incremental backups](#incremental-backups)
+  - [Restoring backups](#restoring-backups)
   - [PapyrusCS integration](#papyruscs-integration)
 - [Configuration overview](#configuration-overview)
   - [Example configuration](#example-configuration)
@@ -54,6 +56,19 @@ Once the server has launched through this tool you will be able to use the serve
 
 ### Incremental backups
 To create incremental world backups make sure the `CreateBackups` option is set to `true`. Backups will be stored in the directory specified by `ArchivePath`. This tool will automatically delete the oldest backups in that directory according to the threshold specified by the `BackupsToKeep` option (`-1` to not delete any older archives) to prevent eventually running out of disk space.
+
+### Restoring backups
+Recent backups can be restored using the `--restore` (or `-r`) flag, followed by the path to an archive. It is sufficient to merely supply the archives filename without its full path and vellum will look for this file in the `ArchivePath` of the specified (or default) configuration. You can however also specify an absolute path.\
+After successfully restoring a backup, vellum will start and invoke the server like usual. If you do not want the server to automatically start after restoring a backup, specify the `--no-start` flag.
+
+Usage examples:
+```bash
+# Restore the specified archive from vellums backup directory and start the server
+vellum -r "2020-07-30_10-59_MyWorld.zip"
+
+# Restore the specified archive from its absolute path and don't start the server afterwards
+vellum -r "~/vellum/backups/2020-07-30_10-59_MyWorld.zip" --no-start
+```
 
 ### PapyrusCS integration
 This tool can automatically execute the [**PapyrusCS**](https://github.com/mjungnickel18/papyruscs) map-rendering tool on an interval. To do so you have to set `EnableRenders` to `true` and specify an interval in minutes with `RenderInterval`.
@@ -139,6 +154,9 @@ PapyrusTasks       String [Array]     An array of additional arguments for papyr
                                       PapyrusCS process after the previous one has
                                       finished (e.g. for rendering of multiple
                                       dimensions)
+
+LowPriority        Boolean            Start render process at lowest OS priority
+                                      (Default: false)
 -------------------
 ADDITIONAL SETTINGS
 -------------------
@@ -159,6 +177,11 @@ StopBdsOnException Boolean (!)        Should vellum unexpectedly crash due to an
                                       unhandled exception, this sets whether to send a 
                                       "stop" command to the BDS process to prevent it
                                       from keep running in detached mode otherwise 
+
+BdsWatchdog        Boolean (!)        Monitor BDS process and restart if unexpectedly
+                                      exited. Will try to restart process a maximum of 
+                                      3 times. This retry count is reset when BDS
+                                      instance is deemed stable.
 ----------------------------------------------------------
 * values marked with (!) are required, non-required values should be provided depending on your specific configuration
 ```
@@ -216,6 +239,14 @@ PARAMETER                             ABOUT
                                       (Default: configuration.json)
 
 -h | --help                           Prints an overview of available parameters.
+
+-r | --restore <archive path>         Restores a backup from the specified archive.
+
+--no-start                            In conjunction with the --restore flag, this tells the
+                                      application to not start the server after successfully
+                                      restoring a backup.
+
+--no-backup-on-startup                Disables the initial temporary backup on startup.
 ```
 Parameters are optional and will default to their default values if not specified.
 

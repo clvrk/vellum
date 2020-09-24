@@ -5,11 +5,11 @@ using System.Text.RegularExpressions;
 
 namespace Vellum.Automation
 {
-    public class ProcessManager
+    public class ProcessManager : Manager
     {
         public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
-        private string[] _ignorePatterns = new string[0];
+        private List<string> _ignorePatterns = new List<string>();
         private string _lastMessage = "";
         private string _pattern;
         public bool HasMatched { get; private set; } = false;
@@ -51,8 +51,8 @@ namespace Vellum.Automation
         public ProcessManager(ProcessStartInfo startInfo, string[] ignorePatterns)
             : this(startInfo)
         {
-            _ignorePatterns = ignorePatterns;
-        }
+            _ignorePatterns = new List<string>(ignorePatterns);
+        }      
 
         ///<summary>Starts the underlying process and begins reading it's output.</summary>
         public bool Start()
@@ -118,9 +118,18 @@ namespace Vellum.Automation
             _pattern = pattern;
         }
 
+        public void AddIgnorePattern(string pattern)
+        {
+            _ignorePatterns.Add(pattern);
+        }
+
+        ///<summary>Registers a function which should be called upon a matching stdout line given by the specified pattern. MatchHandlers should be registered before the process is started to avoid InvalidOperationException exceptions.</summary>
         public void RegisterMatchHandler(string pattern, MatchHandler handler)
         {
-            _matchHandlers.Add(pattern, handler);
+            if (!_matchHandlers.ContainsKey(pattern))
+                _matchHandlers.Add(pattern, handler);
+            else
+                _matchHandlers[pattern] += handler;
         }
 
         public string GetMatchedText()
@@ -159,7 +168,7 @@ namespace Vellum.Automation
 
         public void SendTellraw(string message)
         {
-            if (IsRunning && !Program.RunConfig.QuietMode)
+            if (IsRunning && !Host.RunConfig.QuietMode)
             {
                 #if !IS_LIB
                 message = Regex.Replace(message, @"§", "\\u00a7");
@@ -199,7 +208,7 @@ namespace Vellum.Automation
                 {
                     bool showMsg = true;
 
-                    if (_ignorePatterns.Length > 0)
+                    if (_ignorePatterns.Count > 0)
                     {
                         foreach (string pattern in _ignorePatterns)
                         {
