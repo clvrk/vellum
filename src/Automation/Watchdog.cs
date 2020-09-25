@@ -8,6 +8,7 @@ namespace Vellum.Automation
     {
         public uint RetryLimit = 3;
         private uint _failRetryCount = 0;
+        private bool _enable = true;
 
         #region PLUGIN
         public Version Version { get; }
@@ -25,7 +26,7 @@ namespace Vellum.Automation
             processManager.Process.EnableRaisingEvents = true;
             processManager.Process.Exited += (object sender, EventArgs e) =>
             {
-                if (processManager.Process.ExitCode != 0)
+                if (processManager.Process.ExitCode != 0 && _enable)
                 {
                     CallHook((byte)Hook.CRASH, new HookEventArgs() { Attachment = processManager.Process.ExitCode });
 
@@ -52,6 +53,16 @@ namespace Vellum.Automation
                 CallHook((byte)Hook.STABLE, new HookEventArgs() { Attachment = _failRetryCount });
                 _failRetryCount = 0;
             });
+        }
+
+        public void Disable()
+        {
+            _enable = false;
+        }
+
+        public void Enable()
+        {
+            _enable = true;
         }
     }
 }

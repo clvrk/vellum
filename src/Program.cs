@@ -30,7 +30,6 @@ namespace Vellum
         private static UpdateChecker _updateChecker = new UpdateChecker(ReleaseProvider.GITHUB_RELEASES, @"https://api.github.com/repos/clarkx86/vellum/releases/latest", @"^v?(\d+)\.(\d+)\.(\d+)");
         private static uint playerCount;
         private static Version _localVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        private Version _bdsVersion = new Version();
         public enum Hook
         {
             RELOAD_CONFIG,
@@ -84,6 +83,8 @@ namespace Vellum
                 options.WriteOptionDescriptions(Console.Out);
                 System.Environment.Exit(0);
             }
+
+            Version bdsVersion = new Version();
 
             if (File.Exists(_configPath))
             {
@@ -203,7 +204,7 @@ namespace Vellum
                 // Store current BDS version
                 bds.RegisterMatchHandler(CommonRegex.Version, (object sender, MatchedEventArgs e) =>
                 {
-                    _bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
+                    bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
                 });
                 
                 playerCount = 0;
@@ -249,7 +250,7 @@ namespace Vellum
                         foreach (IPlugin plugin in GetPlugins())
                         {
                             if (plugin.PluginType == PluginType.EXTERNAL)
-                                Console.WriteLine($"Loaded plugin \"{plugin.GetType().Name} v{UpdateChecker.ParseVersion(System.Reflection.Assembly.GetAssembly(plugin.GetType()).GetName().Version, VersionFormatting.MAJOR_MINOR_REVISION)}\"");
+                                Console.WriteLine($"Loaded plugin: {plugin.GetType().Name} v{UpdateChecker.ParseVersion(System.Reflection.Assembly.GetAssembly(plugin.GetType()).GetName().Version, VersionFormatting.MAJOR_MINOR_REVISION)}");
                         }
 
                         Console.WriteLine();
@@ -282,10 +283,10 @@ namespace Vellum
                         {
                             if (nextBackup)
                             {
-                                InvokeBackup(worldPath, tempWorldPath);
-
                                 if (RunConfig.Backups.OnActivityOnly && playerCount == 0)
                                     nextBackup = false;
+
+                                InvokeBackup(worldPath, tempWorldPath);
                             }
                             else
                                 Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
@@ -423,6 +424,7 @@ namespace Vellum
                                     shutdownTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                                     {
                                         // _renderManager.Abort();
+                                        _bdsWatchdog.Disable();
                                         bds.SendInput("stop");
                                         bds.Process.WaitForExit();
                                         bds.Close();
@@ -487,13 +489,13 @@ namespace Vellum
                                     // BDS
                                     UpdateChecker bdsUpdateChecker = new UpdateChecker(ReleaseProvider.HTML, "https://minecraft.net/en-us/download/server/bedrock/", @"https:\/\/minecraft\.azureedge\.net\/bin-" + (System.Environment.OSVersion.Platform == PlatformID.Win32NT ? "win" : "linux") + @"\/bedrock-server-(\d+\.\d+\.\d+(?>\.\d+)?)\.zip");
                                     if (bdsUpdateChecker.GetLatestVersion())
-                                        Console.WriteLine(String.Format("Bedrock Server:\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_bdsVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), bdsUpdateChecker.RemoteVersion > _bdsVersion ? "outdated" : "up to date"));
+                                        Console.WriteLine(String.Format("Bedrock Server:\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(bdsVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.ParseVersion(bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD), UpdateChecker.CompareVersions(bdsVersion, bdsUpdateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION_BUILD) < 0 ? "outdated" : "up to date"));
                                     else
                                         Console.WriteLine("Could not check for Bedrock server updates...");
 
                                     // vellum
                                     if (_updateChecker.GetLatestVersion())
-                                        Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), _updateChecker.RemoteVersion > _localVersion ? "outdated" : "up to date"));
+                                        Console.WriteLine(String.Format("vellum:\t\t{0} -> {1}\t({2})", UpdateChecker.ParseVersion(_localVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.ParseVersion(_updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION), UpdateChecker.CompareVersions(_localVersion, _updateChecker.RemoteVersion, VersionFormatting.MAJOR_MINOR_REVISION) < 0 ? "outdated" : "up to date"));
                                     else
                                         Console.WriteLine("Could not check for vellum updates...");
 

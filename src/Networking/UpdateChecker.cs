@@ -156,5 +156,51 @@ namespace Vellum.Networking
 
             return formattedVersion;
         }
+
+        ///<summary>Compares two versions with each other.</summary>
+        ///<returns>Returns <c>-1</c> if the <c>primary</c> version is older than the <c>secondary</c> version, <c>0</c> if equal or <c>1</c> if newer.</returns>
+        public static short CompareVersions(Version primary, Version secondary, VersionFormatting formatting)
+        {
+            Version[] versions = new Version[] { primary, secondary };
+            int[,] versionNumbers = new int[2, 4];
+
+            switch (formatting)
+            {
+                case VersionFormatting.MAJOR_MINOR_REVISION_BUILD:
+                    versionNumbers = new int[2, 4]
+                    {
+                        { primary.Major, primary.Minor, primary.Revision, primary.Build },
+                        { secondary.Major, secondary.Minor, secondary.Revision, secondary.Build }
+                    };
+                break;
+
+                case VersionFormatting.MAJOR_MINOR_BUILD_REVISION:
+                    versionNumbers = new int[2, 4]
+                    {
+                        { primary.Major, primary.Minor, primary.Build, primary.Revision },
+                        { secondary.Major, secondary.Minor, secondary.Build, secondary.Revision }
+                    };
+                break;
+
+                case VersionFormatting.MAJOR_MINOR_REVISION:
+                    versionNumbers = new int[2, 3]
+                    {
+                        { primary.Major, primary.Minor, primary.Revision },
+                        { secondary.Major, secondary.Minor, secondary.Revision }
+                    };
+                break;
+            }
+
+            // Compare versions
+            for (int i = 0; i < versionNumbers.GetLength(1); i++)
+            {
+                if (versionNumbers[0, i] < versionNumbers[1, i])
+                    return -1;
+                else if (versionNumbers[0, i] > versionNumbers[1, i])
+                    return 1;
+            }
+
+            return 0;
+        }
     }
 }
