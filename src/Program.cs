@@ -291,11 +291,8 @@ namespace Vellum
                             else
                                 Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
                         }
-                    };
 
-                    if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
-                    {
-                        backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                        if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
                         {
                             // Check which entry is up next
                             TimeSpan nextSpan = TimeSpan.MaxValue;
@@ -333,8 +330,8 @@ namespace Vellum
                             Console.WriteLine($"Next scheduled backup is at {(DateTime.Now + nextSpan).ToShortTimeString()} (in {nextSpan.Days} days, {nextSpan.Hours} hours, {nextSpan.Minutes} minutes and {nextSpan.Seconds} seconds)");
                             backupIntervalTimer.Interval = nextSpan.TotalMilliseconds;
                             CallHook((byte)Hook.BACKUP_SCHEDULED, new HookEventArgs() { Attachment = nextSpan });
-                        };
-                    }
+                        }
+                    };
 
                     backupIntervalTimer.Start();
 
