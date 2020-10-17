@@ -186,6 +186,7 @@ namespace Vellum
 
                         if (bds.IsRunning)
                         {
+                            _bdsWatchdog.Disable();
                             bds.SendInput("stop");
                             bds.Process.WaitForExit();
                             bds.Close();
