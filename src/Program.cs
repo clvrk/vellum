@@ -293,7 +293,7 @@ namespace Vellum
                         }
 
                         if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
-                        {
+                        {                            
                             // Check which entry is up next
                             TimeSpan nextSpan = TimeSpan.MaxValue;
                             DateTime backupTime = DateTime.Now;
@@ -309,9 +309,10 @@ namespace Vellum
                                     Console.WriteLine($"Invalid schedule entry \"{clockTime}\" in \"{_configPath}\"!");
                                     continue;
                                 }
-                                if (backupTime < DateTime.Now) backupTime = backupTime.AddDays(1);
+                                // 2 second buffer to fix this timer sometimes jumping the gun by a few hundred milliseconds -TH
+                                if (backupTime < DateTime.Now.AddSeconds(2)) backupTime = backupTime.AddDays(1);
                                 TimeSpan span = backupTime.Subtract(DateTime.Now);
-                                if (span.TotalSeconds > 0 && span < nextSpan) nextSpan = span;                                   
+                                if (span.TotalSeconds > 2 && span < nextSpan) nextSpan = span;                                   
                             }
 
                             // Set the new interval
