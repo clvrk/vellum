@@ -309,8 +309,7 @@ namespace Vellum
                                     Console.WriteLine($"Invalid schedule entry \"{clockTime}\" in \"{_configPath}\"!");
                                     continue;
                                 }
-
-                                if (backupTime < DateTime.Now) backupTime.AddDays(1);
+                                if (backupTime < DateTime.Now) backupTime = backupTime.AddDays(1);
                                 TimeSpan span = backupTime.Subtract(DateTime.Now);
                                 if (span.TotalSeconds > 0 && span < nextSpan) nextSpan = span;                                   
                             }
