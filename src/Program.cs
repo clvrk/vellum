@@ -162,7 +162,7 @@ namespace Vellum
                     "^(Saving...)",
                     "^(A previous save has not been completed.)",
                     "^(Data saved. Files are now ready to be copied.)",
-                    "^(Changes to the level are resumed.)",
+                    "^(Changes to the (level|world) are resumed.)",
                     "Running AutoCompaction..."
                 });
 

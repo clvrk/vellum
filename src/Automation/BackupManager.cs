@@ -190,7 +190,7 @@ namespace Vellum.Automation
                 CallHook((byte)Hook.SAVE_RESUME, new HookEventArgs() { Attachment = sourceFiles });
 
                 _bds.SendInput("save resume");
-                _bds.WaitForMatch("^(Changes to the level are resumed.)");
+                _bds.WaitForMatch("^(Changes to the (level|world) are resumed.)");
             }
 
             string tellrawMsg = "Finished creating backup!";
