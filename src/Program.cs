@@ -291,50 +291,36 @@ namespace Vellum
                             else
                                 Console.WriteLine("Skipping this backup because no players were online since the last one was taken...");
                         }
-                    };
 
-                    if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
-                    {
-                        backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
-                        {
+                        if (RunConfig.Backups.EnableSchedule && RunConfig.Backups.Schedule.Length > 0)
+                        {                            
                             // Check which entry is up next
                             TimeSpan nextSpan = TimeSpan.MaxValue;
+                            DateTime backupTime = DateTime.Now;
 
                             foreach (string clockTime in RunConfig.Backups.Schedule)
                             {
-                                // Parse & validate entry
-                                // Match match = Regex.Match(clockTime, @"^\s*(\d{1,2})\s*:\s*(\d{1,2})\s*([aApP][mM])");   // 12h format
-                                Match match = Regex.Match(clockTime, @"^\s*(\d{1,2})\s*:\s*(\d{1,2})\s*$");                 // 24h format
-
-                                bool valid = false;
-                                int hour, minute;
-
-                                if (match.Groups.Count == 3)
+                                try
                                 {
-                                    hour = Convert.ToInt32(match.Groups[1].Value);
-                                    minute = Convert.ToInt32(match.Groups[2].Value);
-
-                                    if ((hour >= 0 && hour <= 23) && (minute >= 0 && minute <= 59))
-                                    {
-                                        valid = true;
-
-                                        TimeSpan span = new TimeSpan((hour == 0 ? 24 : hour) - DateTime.Now.Hour, minute - DateTime.Now.Minute, 0 - DateTime.Now.Second);
-
-                                        if (span.TotalSeconds > 0 && span < nextSpan)
-                                            nextSpan = span;
-                                    }
+                                    backupTime = DateTime.Parse(clockTime);
                                 }
-
-                                if (!valid)
+                                catch (FormatException)
+                                {
                                     Console.WriteLine($"Invalid schedule entry \"{clockTime}\" in \"{_configPath}\"!");
+                                    continue;
+                                }
+                                // 2 second buffer to fix this timer sometimes jumping the gun by a few hundred milliseconds -TH
+                                if (backupTime < DateTime.Now.AddSeconds(2)) backupTime = backupTime.AddDays(1);
+                                TimeSpan span = backupTime.Subtract(DateTime.Now);
+                                if (span.TotalSeconds > 2 && span < nextSpan) nextSpan = span;                                   
                             }
 
                             // Set the new interval
                             Console.WriteLine($"Next scheduled backup is at {(DateTime.Now + nextSpan).ToShortTimeString()} (in {nextSpan.Days} days, {nextSpan.Hours} hours, {nextSpan.Minutes} minutes and {nextSpan.Seconds} seconds)");
                             backupIntervalTimer.Interval = nextSpan.TotalMilliseconds;
                             CallHook((byte)Hook.BACKUP_SCHEDULED, new HookEventArgs() { Attachment = nextSpan });
-                        };
-                    }
+                        }
+                    };
 
                     backupIntervalTimer.Start();
 
