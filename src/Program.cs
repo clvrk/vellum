@@ -186,6 +186,7 @@ namespace Vellum
 
                         if (bds.IsRunning)
                         {
+                            _bdsWatchdog.Disable();
                             bds.SendInput("stop");
                             bds.Process.WaitForExit();
                             bds.Close();
@@ -579,7 +580,9 @@ namespace Vellum
         {
             if (!_backupManager.Processing)
             {
+                if (RunConfig.Backups.StopBeforeBackup) _bdsWatchdog.Disable();
                 _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true);
+                if (RunConfig.Backups.StopBeforeBackup) _bdsWatchdog.Enable();
             }
             else
             {
@@ -591,7 +594,9 @@ namespace Vellum
         {
             if (!_backupManager.Processing && !_renderManager.Processing)
             {
+                if (RunConfig.Backups.StopBeforeBackup) _bdsWatchdog.Disable();
                 _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false);
+                if (RunConfig.Backups.StopBeforeBackup) _bdsWatchdog.Enable();
                 _renderManager.Start(tempWorldPath);
             }
             else
