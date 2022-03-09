@@ -136,13 +136,29 @@ namespace Vellum
                     }
                 }
                 #endregion
-
-                if (RunConfig.Renders.EnableRenders && String.IsNullOrWhiteSpace(RunConfig.Renders.PapyrusBinPath))
-                {
-                    Console.WriteLine("Disabling renders because no valid path to a Papyrus executable has been specified");
-                    RunConfig.Renders.EnableRenders = false;
-                }
-
+				// we report the active render applications
+				RenderConfig RenderApp;
+				foreach(KeyValuePair<string, RenderConfig> renderEntry in RunConfig.Renders)
+				{
+					RenderApp = renderEntry.Value;
+					if (RenderApp.EnableRenders && !String.IsNullOrWhiteSpace(RenderApp.RenderAppBinPath))
+					{
+						Console.WriteLine("\t{0} is activated as a renderer, with {1} task(s)", RenderApp.RenderAppBinPath,RenderApp.RenderAppTasks.Length);
+						RenderApp.EnableRenders = true;
+					}
+				}
+				
+				// Render interval is taken from the "Global" renderapp settings. Currently per-app settings are ignored. Multi-threading would require independent temp copies of the world.
+				if (RunConfig.Renders["Global"].EnableRenders)
+				{
+					System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.Renders["Global"].RenderInterval * 60000);
+					renderIntervalTimer.AutoReset = true;
+					renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+					{
+						InvokeRender(worldPath, tempWorldPath);
+					};
+					renderIntervalTimer.Start();
+				}
 
                 #region BDS process and input thread
                 ProcessStartInfo serverStartInfo = new ProcessStartInfo()
@@ -354,22 +370,9 @@ namespace Vellum
                     });
                 }
 
-                // Render interval
-                if (RunConfig.Renders.EnableRenders)
-                {
-                    System.Timers.Timer renderIntervalTimer = new System.Timers.Timer(RunConfig.Renders.RenderInterval * 60000);
-                    renderIntervalTimer.AutoReset = true;
-                    renderIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
-                    {
-                        InvokeRender(worldPath, tempWorldPath);
-                    };
-                    renderIntervalTimer.Start();
-                }
-
                 if (backupOnStartup)
                 {
                     // Create initial world backup
-                    Console.WriteLine("Creating initial temporary copy of world directory...");
                     _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
                 }
 
@@ -546,20 +549,25 @@ namespace Vellum
                             PreExec = "",
                             PostExec = "",
                         },
-                        Renders = new RenderConfig()
-                        {
-                            EnableRenders = true,
-                            RenderInterval = 180,
-                            PapyrusBinPath = "",
-                            PapyrusGlobalArgs = "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html -f png -q 100 --deleteexistingupdatefolder",
-                            PapyrusTasks = new string[] {
-                                "--dim 0",
-                                "--dim 1",
-                                "--dim 2"
-                            },
-                            PapyrusOutputPath = "",
-                            LowPriority = false
-                        },
+                        Renders = new Dictionary<string, RenderConfig>()
+						{
+							{	"Global",
+								new RenderConfig()
+								{
+									EnableRenders = true,
+									RenderInterval = 180,
+									RenderAppBinPath = "",
+									RenderAppGlobalArgs = "-w $WORLD_PATH -o $OUTPUT_PATH --htmlfile index.html -f png -q 100 --deleteexistingupdatefolder",
+									RenderAppTasks = new string[] {
+										"--dim 0",
+										"--dim 1",
+										"--dim 2"
+									},
+									RenderAppOutputPath = "",
+									LowPriority = false
+								}
+							}
+						},
                         QuietMode = false,
                         HideStdout = true,
                         BusyCommands = true,
@@ -583,7 +591,7 @@ namespace Vellum
             }
             else
             {
-                if (!RunConfig.QuietMode) { Console.WriteLine("A backup task is still running."); }
+                if (!RunConfig.QuietMode) { Console.WriteLine("A backup (or render) task is still running."); }
             }
         }
 
@@ -596,7 +604,7 @@ namespace Vellum
             }
             else
             {
-                if (!RunConfig.QuietMode) { Console.WriteLine("A render task is still running."); }
+                if (!RunConfig.QuietMode) { Console.WriteLine("A render (or backup) task is still running."); }
             }
         }
 
