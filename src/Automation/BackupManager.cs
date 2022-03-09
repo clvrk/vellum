@@ -15,6 +15,8 @@ namespace Vellum.Automation
         public RunConfiguration RunConfig;
         ///<summary>Time in milliseconds to wait until sending next <code>save query</code> command to <code>ProcessManager</code>'s process</summary>
         public int QueryTimeout { get; set; } = 500;
+		private string _tag = "[    VELLUM:BACKUP       ] ";
+
 
         #region PLUGIN
         public Version Version { get; }
@@ -48,7 +50,7 @@ namespace Vellum.Automation
         public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
         {
             Processing = true;
-
+			Log(String.Format("{0}Creating initial temporary copy of world directory...", _tag));
             CallHook((byte)Hook.BEGIN);
 
             #region PRE EXEC

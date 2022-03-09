@@ -4,7 +4,7 @@
     {
         public string BdsBinPath;
         public BackupConfig Backups;
-        public RenderConfig Renders;
+        public System.Collections.Generic.Dictionary<string, RenderConfig> Renders;
         public bool QuietMode;
         public bool HideStdout;
         public bool BusyCommands;
@@ -32,11 +32,11 @@
     public class RenderConfig
     {
         public bool EnableRenders;
-        public string PapyrusBinPath;
-        public string PapyrusOutputPath;
+        public string RenderAppBinPath;
+        public string RenderAppOutputPath;
         public double RenderInterval;
-        public string PapyrusGlobalArgs;
-        public string[] PapyrusTasks;
+        public string RenderAppGlobalArgs;
+        public string[] RenderAppTasks;
         public bool LowPriority;
     }
 
