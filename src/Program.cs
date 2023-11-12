@@ -204,7 +204,14 @@ namespace Vellum
                 // Store current BDS version
                 bds.RegisterMatchHandler(CommonRegex.Version, (object sender, MatchedEventArgs e) =>
                 {
-                    bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
+                    try 
+                    {
+                        bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION_BUILD);
+                    }
+                    catch
+                    {
+                        bdsVersion = UpdateChecker.ParseVersion(e.Matches[0].Groups[1].Value, VersionFormatting.MAJOR_MINOR_REVISION);                    
+                    }
                 });
                 
                 playerCount = 0;
